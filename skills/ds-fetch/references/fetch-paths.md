@@ -117,6 +117,20 @@ So a skill that allowlists by `read-only` gets nothing usable, and one that bloc
 `destructive` sails straight into `finalize_plan`. **Decide from the tool's name and semantics,
 never from its annotation.** The read/never lists above are curated by hand for exactly this reason.
 
+### How to actually call these
+
+**MCP tools are model-invoked only.** There is no `/mcp call`, no `@server:tool`, no CLI flag. The
+`/mcp` → "Tools for claude-design" list is **reference-only** — it says "Enter to select" and
+selecting only shows detail. (MCP *prompts* do become `/mcp__server__prompt` slash commands; tools
+never do.)
+
+To exercise one, ask in natural language and name it: *"Use the claude-design `list_projects` tool
+and show me the raw result."* First call prompts for permission; `allowedTools` can pre-approve
+`mcp__claude-design__*` for unattended runs.
+
+Worth noting the TUI's "Enter to select" is itself another advertised-surface-that-isn't — the
+fourth of the day. Do not lose time trying to invoke tools from that menu.
+
 ### `get_conversation` — the intent source
 
 `ds-spec-extract` has to invent semantic token names when an export carries only raw values, and
