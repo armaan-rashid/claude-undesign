@@ -17,8 +17,9 @@ This skill does **one** job: mirror + manifest. It does not diff, interpret, or 
 `ds-sync` layers change-detection on top of it; the port pipeline consumes its output directly.
 Keeping it dumb is what lets both callers share it.
 
-**Read-only.** Never call `finalize_plan`, `write_files`, or `delete_files`. If a task seems to
-need a write back to Claude Design, stop and ask — this pipeline is one-way by design.
+**Read-only.** The never-call list is in `references/fetch-paths.md` and is curated by hand —
+**the server's own tool annotations are self-contradictory and cannot be used for this.** If a task
+seems to need a write back to Claude Design, stop and ask; this pipeline is one-way by design.
 
 ## Output
 
@@ -44,10 +45,10 @@ merely plausible. Fetch it whenever the route allows.
   "projectId": "…",
   "projectName": "…",
   "fetchedAt": "2026-07-19T15:00:00Z",
-  "route": "designsync-tool",
+  "route": "mcp-tool",
   "capabilityProbe": { "listsAppProjects": true, "evidence": "…" },
   "files": { "components/core/Button.jsx": "sha256:…" },
-  "skipped": [ { "path": "uploads/hero.png", "reason": "binary; over get_file cap" } ]
+  "skipped": [ { "path": "uploads/hero.png", "reason": "binary; over file-read size cap" } ]
 }
 ```
 
@@ -88,8 +89,11 @@ So the two commands that work are the two the hint omits, and the six it adverti
 sources each described a Claude Design interface that does not behave as described:
 
 1. Anthropic's support article documents `/design-login`. It does not exist.
-2. `ds-sync` documents a `DesignSync` tool with named read methods. Never verified; see Step 1.
+2. `ds-sync` documents a `DesignSync` tool. No tool by that name exists — though five of its six
+   *method* names turned out real, so the source was neither reliable nor worthless.
 3. Autocomplete advertises six subcommands. Five are inert and it omits the two real ones.
+4. The server's own tool annotations mark `list_files` both `read-only` and `destructive`, and
+   `finalize_plan` as neither.
 
 The rule that survives all three: **an advertised surface is a claim, not evidence.** Docs,
 existing skill files, and autocomplete hints are all leads. Running the thing is evidence. This is
@@ -99,15 +103,16 @@ versus what is actually there — applied to our own tooling.
 Re-verify this table by running the commands, not by reading anything. Update it with a date when
 behavior moves.
 
+Note also that the docs were **right** about the MCP endpoint (Step 1) while wrong about
+`/design-login`. The rule is *verify*, not *distrust documentation categorically* — blanket
+suspicion would have discarded the only working route. Sources are not uniformly reliable; claims
+are.
+
 ### Flow
 
-`/design consent`, and confirm it actually completed. There is no working status check — `status`
-is one of the inert subcommands, so the only signal that consent worked is whether design access
-subsequently functions.
-
-If `/design` does not respond at all, the MCP server may need adding. Documented as
-`claude mcp add --scope user --transport http claude-design https://api.anthropic.com/v1/design/mcp`
-— `[docs]`, unverified, from the article that invented `/design-login`. Treat accordingly.
+Full setup is in Step 1 — `mcp add`, then `/design consent`, then restart. There is **no working
+status check** (`status` is inert), so the only signal that consent worked is whether the tools
+subsequently function.
 
 Headless and scheduled runs have no interactive session, so lapsed consent fails there and only
 there — a fetch that works interactively and fails nightly is almost always this. Report it as a
@@ -120,11 +125,10 @@ search away, and the docs will still look authoritative when it happens.
 
 Read `references/fetch-paths.md` for the routes and their verification status.
 
-**No slash command fetches anything.** `import`, `export`, and `sync` are inert. So the mechanism,
-if one exists, is not a command — which leaves one hypothesis worth testing and two routes that
-work today regardless.
+**No slash command fetches anything** — `import`, `export`, and `sync` are all inert. The mechanism
+is not a command. It is MCP tools.
 
-### Settled — the route is MCP tools
+### The route is MCP tools
 
 `/design consent` authorizes the **MCP server**, which exposes design access as MCP *tools*, not
 slash commands. Verified `[env]` 2026-07-19: 22 tools on server `claude-design`.
@@ -149,37 +153,41 @@ Three distinct trip-wires, each of which looks like the others:
 
 Go to Step 2 once `/mcp` lists `claude-design`.
 
-### The routes that work regardless
+### Fallbacks, when the tools are unavailable
 
-Neither depends on anything unverified, so prefer them until the hypothesis is settled:
+Neither needs the MCP server, so both work when it is missing, unregistered, or the session is
+Cowork:
 
 - **Export from Claude Design, then normalize** (R-3 / R-4). The user clicks Export — "Handoff to
-  Claude Code → Send to local coding agent", or "Download as .zip". Skill takes it from there via
-  Step 2b. The handoff bundle additionally carries the README and design chat, which is the only
-  place design *intent* survives — worth preferring on those grounds alone.
-- **Already on disk** (R-5). How the pipeline's one real excavation fixture was actually obtained.
+  Claude Code → Send to local coding agent", or "Download as .zip". Step 2b takes it from there.
+- **Already on disk** (R-5). How the pipeline's one real excavation fixture was actually obtained,
+  and the only route that never breaks.
 
-Being honest that step 0 may be irreducibly manual is better than a skill that pretends to
-automate it and fails at the seam.
+The tool route used to be preferred purely on convenience. It now also wins on **intent**:
+`get_conversation`, `get_claude_design_prompt`, and `list_comments` retrieve the design chat and
+rationale programmatically — the thing a bare file mirror loses, and the thing that decides whether
+`ds-spec-extract`'s invented token names are right or merely plausible.
 
-Call `list_projects`. Then answer, **in writing, into `FETCH.json.capabilityProbe`**:
+Where the tools are unavailable, say step 0 is manual and mean it. That beats a skill that claims
+automation and fails at the seam.
+
+### The one probe left
+
+`list_projects` exists and is generic. **What it returns has not been observed.** Call it, then
+record, in writing, into `FETCH.json.capabilityProbe`:
 
 > Does `list_projects` return app/site projects, or only design-system projects?
 
-**This is an open question in this pipeline, not a rhetorical one.** It is confirmed that
-`DesignSync` reaches design-system projects — `ds-sync` run 1 mirrored 83 files from one. Whether
-the same API reaches app/site projects (the kind the port pipeline actually consumes) has never
-been tested. The first real run of this skill settles it.
+The port pipeline consumes app/site projects; every verified fact so far concerns a design-system
+project. Note also `list_design_systems` as a separate tool — that the two are distinct hints the
+server may treat them as different kinds, which is exactly what this probe is asking about.
 
-- **App projects listed** → route `designsync-tool`. Continue to Step 2.
-- **Only DS projects listed** → the app export must come from a UI route (handoff bundle,
-  save-as-folder, HTML export). See `references/fetch-paths.md`, tell the user which route to use,
-  and switch to Step 2b to normalize what they produce.
+- **App projects listed** → route `mcp-tool`. Continue to Step 2.
+- **Only design systems** → the app export needs a UI route. Tell the user which, then Step 2b.
 
-Either way, **write the finding into `references/fetch-paths.md`** and promote that route's status
-from `unknown` to `confirmed` or `unavailable`. Do not leave the next run to rediscover it. This
-is the same catalog discipline `known-scaffolds.md` runs on, for the same reason: an answer
-learned and not recorded is an answer paid for twice.
+Either way, **write the finding into `references/fetch-paths.md`** and move R-2 off `unknown`. An
+answer learned and not recorded is an answer paid for twice — the same catalog discipline
+`known-scaffolds.md` runs on.
 
 ## Step 2 — Mirror (tool route)
 
@@ -216,22 +224,6 @@ annotation here. Use the curated lists in the reference.
 
 On first real execution, correct every `[run-1]` detail above against observed behavior and re-tag
 it `[env]`.
-
-1. **`list_files` returns bare directories mixed in with files.** Keep only real files: paths
-   that are not a prefix of another path. Directory entries have no extension and fail `get_file`.
-2. **`get_file` each kept path.** Write **verbatim** into `<dest>/source/<path>`, preserving the
-   original path. No reformatting, no normalization of line endings, no prettifying. This is a
-   mirror; anything that edits bytes here corrupts the excavation's file:line evidence downstream.
-3. **Skip `uploads/*` and `.thumbnail`.** Binary reference material, and `uploads/*` regularly
-   exceeds the 256 KiB `get_file` cap. Record every skip with its reason — a silent skip becomes a
-   phantom missing dependency in `CONTRACTS.md`.
-4. **Anything else over the 256 KiB cap** — record as skipped with `reason: "over get_file cap"`.
-   Do not attempt to chunk or reconstruct it.
-5. **Hash each file** (sha256) as you write it.
-6. **Delegate the mirror to a subagent when running interactively.** ~80 files burns roughly
-   250K tokens of context, and the parent session needs that context for the actual port work.
-   Afterwards, independently re-verify a sample of hashes — a subagent reporting success is not
-   the same as bytes being on disk.
 
 ## Step 2b — Normalize (UI route)
 

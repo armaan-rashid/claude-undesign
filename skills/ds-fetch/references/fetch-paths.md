@@ -159,26 +159,16 @@ tool. Weighing that against everything else in this repo:
 because `build.rs` copies CSS mid-build, `pgrep -x site` rather than `pkill -f target/debug/site`
 because the pattern matches the invoking shell. Nobody invents those.
 
-Its **transport-side** claims — the tool name, the method names, the 256 KiB cap, the bare-directory
-filtering, the 83 files — have no corroboration and a missing mechanism. They are also exactly the
-kind of detail that sounds like experience and is cheap to fabricate.
+Its **transport-side** claims split by evidence. The method names turned out **mostly right** once
+enumerated (see the tool surface above): `list_projects`, `list_files`, `finalize_plan`,
+`write_files`, `delete_files` all exist. `get_file` does not — it is `read_file`, and that single
+wrong name would have failed on first contact.
 
-**Treat every transport claim inherited from `ds-sync` as unverified until a live server confirms
-it.** `ds-fetch` Step 2 was built on those claims and inherits the doubt.
+Still untested `[run-1]`: the 256 KiB cap, bare-directory entries in `list_files`, the 83-file
+count, the `updatedAt` freshness field. Plausible and unconfirmed — **not** invented. Correct them
+on first execution.
 
-What **is** in doubt is the interface. `ds-sync` names the tool `DesignSync` with read methods
-`list_projects`, `list_files`, `get_file`, and write methods `finalize_plan`, `write_files`,
-`delete_files`. Those names entered this pipeline through `ds-sync` and have never been checked
-against the MCP server's actual tool list. Given the `/design-login` episode, treat them as
-`[run-1]` recollection rather than API documentation.
-
-**First run: enumerate the server's real tools and record them here.** Then this section can be
-promoted to `[env]`.
-
-**The read-only policy stands regardless of naming.** Whatever the write methods turn out to be
-called, this pipeline never calls them.
-
-Produces the design-system project's file tree:
+Expected file tree for a design-system project `[run-1]`, unverified:
 
 ```
 colors_and_type.css          # tokens as CSS custom properties + semantic classes — the real token source
@@ -193,13 +183,14 @@ ui_kits/library/*            # future page; mirror only
 uploads/*                    # binary reference material — ALWAYS SKIP
 ```
 
-Confirmed constraints:
+Claimed constraints — all `[run-1]`, **none verified**. Test each on first execution:
 
 - `list_files` mixes bare directory entries in with files. Filter by "path is not a prefix of
-  another path" before calling `get_file`.
-- `get_file` caps at 256 KiB. `uploads/*` routinely exceeds it.
+  another path" before calling `read_file`.
+- A size cap around 256 KiB on file reads; `uploads/*` routinely exceeds it.
 - Mirroring ~80 files costs roughly 250K tokens of context — delegate to a subagent.
-- Freshness is checkable cheaply: `list_projects` exposes `updatedAt`. Compare before mirroring.
+- `list_projects` exposes `updatedAt` for a cheap freshness check. `get_project` may serve this
+  better; it was unknown when the claim was written.
 
 **Note for the port pipeline:** `_ds_manifest.json` lags `colors_and_type.css`. In the excavation
 fixture it was missing an entire token tier (`--amber*`, `--font-terminal`) that the CSS had and

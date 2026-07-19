@@ -52,8 +52,7 @@ any member/sharing tool. And **do not use the MCP annotations to decide that**: 
 tagged destructive at all. The curated lists live in `ds-fetch/references/fetch-paths.md`.
 
 **The mirror itself lives in `ds-fetch`.** That skill owns auth, `list_files` filtering, the
-`get_file` cap, skip rules, verbatim writes, and hashing — all of it learned on run 1 of this
-skill. This skill owns everything downstream: freshness, diff, the two lanes, screenshots,
+file-read size cap, skip rules, verbatim writes, and hashing. This skill owns everything downstream: freshness, diff, the two lanes, screenshots,
 commits. Do not reimplement the mirror here; fix it in `ds-fetch` and both callers get the fix.
 
 ## Cheap freshness check
@@ -71,7 +70,7 @@ shell; use `pgrep -x site`.)
 ## Phase 1 — Mirror + diff
 
 1. **Follow the `ds-fetch` skill**, with `dest` = repo root so the mirror lands in
-   `design-system/` as before. It handles bare-directory filtering, the 256 KiB `get_file` cap,
+   `design-system/` as before. It handles bare-directory filtering, the file-read size cap,
    the `uploads/*` and `.thumbnail` skips, verbatim writes, subagent delegation for the ~250K
    token mirror, and the hash sample re-verification. It returns `FETCH.json` with a sha256 per
    file and a reasoned skip list.
@@ -138,6 +137,6 @@ from documentation.
   component proposals awaiting review in `docs/ds-reconciliation-2026-07-16/`.
 
 The transport-level trip-wires from run 1 — bare directory entries in `list_files`, the 256 KiB
-`get_file` cap, `uploads/*` skipping, subagent delegation, hash re-verification — now live in
+file-read size cap, `uploads/*` skipping, subagent delegation, hash re-verification — now live in
 `ds-fetch` and are enforced there. They are not repeated here on purpose: two copies drift, and
 the copy that drifts is always the one nobody ran.
