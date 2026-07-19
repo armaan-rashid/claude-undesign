@@ -64,14 +64,29 @@ carries a correct, current endpoint. The lesson from this file's header is *veri
 documentation categorically* — overcorrecting into blanket suspicion would have thrown away the
 only working route. Sources are not uniformly reliable or unreliable; individual claims are.
 
+### Claude Code only — not Cowork
+
+`--scope user` writes to **Claude Code's** config. Cowork's connectors come from the claude.ai
+account and appear in `claude mcp list` prefixed `claude.ai` (Stripe, Google Drive, Gmail, Google
+Calendar, Figma); `claude-design` has no such prefix. Verified `[env]`: a Cowork session restarted
+after registration still cannot see it.
+
+**So the tool route exists only in Claude Code.** Run this pipeline there. A Cowork session gets
+the UI routes (R-3/R-4) and already-on-disk (R-5), and that is not a misconfiguration to debug.
+
+Corollary worth remembering: "design" tools visible in a session may belong to **Figma**
+(`get_design_context`, `search_design_system`, `list_file_components_for_code_connect`). They are a
+different server and prove nothing about Claude Design access. Check the server prefix, not the
+tool name — this nearly produced a false positive twice.
+
 ### Still open
 
-The server connects. **Its actual tool names and signatures have not been read yet.** Until they
-are, `ds-sync`'s `DesignSync` / `list_projects` / `list_files` / `get_file` remain invented — a
-connected server is not evidence for any particular tool name.
+The server connects. **Its tool names and signatures have not been read.** Until they are,
+`ds-sync`'s `DesignSync` / `list_projects` / `list_files` / `get_file` remain invented — a connected
+server is not evidence for any particular tool name.
 
-Enumerate via `/mcp` in Claude Code, record the real names here, and only then rewrite `ds-fetch`
-Step 2 against them.
+Enumerate with `/mcp` in Claude Code, record the real names here, then rewrite `ds-fetch` Step 2
+against them and drop its UNEXECUTED banner.
 
 ### What that implies about `[run-1]`
 
