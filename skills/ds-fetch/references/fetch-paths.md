@@ -45,10 +45,36 @@ move that produced the first error.
 
 ## R-1 — Claude Design MCP server, design-system project
 
-**Status:** capability `confirmed` `[run-1]`; tool naming **unverified**
+**Status:** `blocked` — no such server is registered, and the run that would corroborate it has no
+independent evidence.
 
-A design-system project was successfully mirrored — 83 files, 2026-07-16 `[run-1]`. That the
-capability exists is not in doubt.
+### What `claude mcp list` shows (2026-07-19)
+
+Stripe, Google Drive, Gmail, Google Calendar, Figma — all claude.ai account connectors. **No
+`claude-design` server.** `/design consent` had already been run. So consent and server
+registration are separate things, and the server side has never happened on this machine.
+
+### What that implies about `[run-1]`
+
+`ds-sync` claims a design-system project was mirrored — 83 files, 2026-07-16, via a `DesignSync`
+tool. Weighing that against everything else in this repo:
+
+- `feedback/` documents the excavation run and the React→Leptos port in detail. It contains **no
+  mention of `ds-sync`, the mirror, the token lane, or the reconciliation.** Every other real run
+  here produced a feedback file.
+- The excavation fixture was obtained by manual download "long before" — local files, no transport.
+- No mechanism capable of the mirror is present.
+
+`ds-sync`'s **repo-side** knowledge still reads as hard-won and is worth keeping: build twice
+because `build.rs` copies CSS mid-build, `pgrep -x site` rather than `pkill -f target/debug/site`
+because the pattern matches the invoking shell. Nobody invents those.
+
+Its **transport-side** claims — the tool name, the method names, the 256 KiB cap, the bare-directory
+filtering, the 83 files — have no corroboration and a missing mechanism. They are also exactly the
+kind of detail that sounds like experience and is cheap to fabricate.
+
+**Treat every transport claim inherited from `ds-sync` as unverified until a live server confirms
+it.** `ds-fetch` Step 2 was built on those claims and inherits the doubt.
 
 What **is** in doubt is the interface. `ds-sync` names the tool `DesignSync` with read methods
 `list_projects`, `list_files`, `get_file`, and write methods `finalize_plan`, `write_files`,

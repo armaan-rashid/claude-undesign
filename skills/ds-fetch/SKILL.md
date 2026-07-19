@@ -166,10 +166,20 @@ from `unknown` to `confirmed` or `unavailable`. Do not leave the next run to red
 is the same catalog discipline `known-scaffolds.md` runs on, for the same reason: an answer
 learned and not recorded is an answer paid for twice.
 
-## Step 2 — Mirror (tool route)
+## Step 2 — Mirror (tool route) — UNEXECUTED
 
-Trip-wires below are confirmed from `ds-sync` run 1 (2026-07-16, 83 files). They are not
-speculative; skipping them reproduces known failures.
+**This step has never run.** It was written from `ds-sync`'s Phase 1, which was itself written as
+though a run had happened when it had not (confirmed with the author, 2026-07-19). No Claude Design
+MCP server is registered, so nothing here has ever touched a live server.
+
+An earlier revision of this file said these trip-wires were "confirmed from ds-sync run 1... not
+speculative." That was false, and it is the clearest example in this project of the failure this
+skill now warns about: an unverified claim in one file laundered into a confirmed claim in another
+by citing a run that did not happen.
+
+Keep the steps — they are a **reasonable design** for a mirror, and reasonable is worth something.
+Just do not treat any specific number or method name below as observed. On first real execution,
+correct them against what the server actually does and re-tag them `[env]`.
 
 1. **`list_files` returns bare directories mixed in with files.** Keep only real files: paths
    that are not a prefix of another path. Directory entries have no extension and fail `get_file`.

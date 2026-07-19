@@ -14,9 +14,30 @@ One-way sync. Source of truth for the *design* is the Claude Design project; sou
 for the *Rust rendering* is this repo. The committed mirror in `design-system/` and the hash
 state in `.ds-sync-state.json` connect the two.
 
-Project: `Library of Light — Design System`, projectId `2035e932-f292-4d0a-af54-37ded1de013c`.
-Access via the `DesignSync` tool (read methods only: `list_projects`, `list_files`,
-`get_file`). NEVER call `finalize_plan` / `write_files` / `delete_files` here.
+## Provenance — read before trusting anything below
+
+**This skill has never run end to end.** Established 2026-07-19:
+
+| Half | Status |
+|---|---|
+| **Repo-side** — Phases 0, 2, 3, 4: builds, screenshots, the token lane, the component gate, the Leptos reconciliation | **Executed.** Hard-won and worth trusting. |
+| **Transport** — Phase 1: reaching Claude Design, the mirror, the 83-file count | **Never executed.** |
+
+The transport half was written as though a run had happened. It had not. Consequences:
+
+- The `DesignSync` tool name and its `list_projects` / `list_files` / `get_file` methods are
+  **invented until proven otherwise.** No such server is registered (`claude mcp list`, 2026-07-19).
+- The "83 files", the 256 KiB `get_file` cap, and the bare-directory filtering are **not
+  observations.** They are plausible-sounding detail with nothing behind them.
+- `ds-fetch` Step 2 was built on those claims and inherits the doubt. Fix in `ds-fetch`.
+
+What survives is specific enough to be real: build twice because `build.rs` copies CSS mid-build;
+`pgrep -x site` rather than `pkill -f target/debug/site` because the pattern matches the invoking
+shell. Nobody invents those. Keep them.
+
+Project: `Library of Light — Design System`, projectId `2035e932-f292-4d0a-af54-37ded1de013c`
+(also unverified). Whatever the read methods turn out to be called, **never** call anything that
+writes back — the read-only policy holds independent of naming.
 
 **The mirror itself lives in `ds-fetch`.** That skill owns auth, `list_files` filtering, the
 `get_file` cap, skip rules, verbatim writes, and hashing — all of it learned on run 1 of this
