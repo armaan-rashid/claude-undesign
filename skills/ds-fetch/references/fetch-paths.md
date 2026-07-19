@@ -203,8 +203,8 @@ Claimed constraints — all `[run-1]`, **none verified**. Test each on first exe
   another path" before calling `read_file`.
 - A size cap around 256 KiB on file reads; `uploads/*` routinely exceeds it.
 - Mirroring ~80 files costs roughly 250K tokens of context — delegate to a subagent.
-- `list_projects` exposes `updatedAt` for a cheap freshness check. `get_project` may serve this
-  better; it was unknown when the claim was written.
+- ~~`list_projects` exposes `updatedAt` for a cheap freshness check.~~ **Disproven `[env]`** — the
+  response is `{id, name, url}` only. Try `get_project`.
 
 **Note for the port pipeline:** `_ds_manifest.json` lags `colors_and_type.css`. In the excavation
 fixture it was missing an entire token tier (`--amber*`, `--font-terminal`) that the CSS had and
