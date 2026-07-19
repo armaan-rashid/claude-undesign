@@ -23,18 +23,25 @@ trustworthy and this file has already been wrong once:
 - `[docs]` — from Anthropic support articles. **Weakest for command surfaces** — see the staleness
   note below.
 
-## Staleness warning — docs lost to environment once already
+## Three sources, three wrong answers
 
-On 2026-07-19, the support article ["Get started with Claude Design"](https://support.claude.com/en/articles/14604416-get-started-with-claude-design)
-documented `/design-login` as the sign-in step. In the actual environment that command **does not
-exist**; the surface is `/design` with subcommands, and auth is `/design consent`.
+Every authoritative-looking description of the Claude Design interface has so far been wrong.
+Recorded here because the correction keeps getting re-introduced by whoever reads the next
+plausible source.
 
-Two rounds of web research "confirmed" the wrong answer before a human ran the command.
+| Source | Claimed | Reality |
+|---|---|---|
+| [Support article](https://support.claude.com/en/articles/14604416-get-started-with-claude-design) | `/design-login` signs you in | Command does not exist |
+| `ds-sync/SKILL.md` | A `DesignSync` tool with `list_projects` / `list_files` / `get_file` | Never verified against a live server |
+| `/design` autocomplete | `[sync\|login\|import\|export\|status\|<prompt>]` | Five are inert; the two that work (`consent`, `revoke`) aren't listed |
 
-The lesson is not "that one line was wrong." It is that **for command surfaces, documentation is a
-lead and the environment is the evidence.** Anything tagged `[docs]` here is unverified until
-someone runs it. Do not promote `[docs]` to fact by finding a second article that repeats it —
-that is the exact move that produced the error.
+Two rounds of web research "confirmed" `/design-login` before a human ran it. Autocomplete was
+believed for exactly one message before the same human ran those too.
+
+**The rule: an advertised surface is a claim, not evidence.** Documentation, an existing skill
+file, and an autocomplete hint are all leads of equal (low) weight. Running the thing is evidence.
+Do not promote `[docs]` to fact by finding a second source that repeats it — that is precisely the
+move that produced the first error.
 
 ## R-1 — Claude Design MCP server, design-system project
 
@@ -152,21 +159,25 @@ it keeps the skill useful when Claude Design is unreachable or the export predat
 
 ---
 
-## Adjacent commands
+## The `/design` command surface
 
-`[docs]`, and therefore unverified — check against `/design` subcommands in the environment before
-relying on any of it.
+Settled `[env]`, 2026-07-19, by running every one of them:
 
-- **`/design-sync`** — pulls a design system in from a GitHub repo, design files, raw uploads, or a
-  local codebase. Described as **bidirectional**: pull a system in, or push code changes back to
-  Claude Design. An earlier revision of this file called it one-way into Claude Design; that was
-  wrong.
-- **`/design`** — the actual command surface `[env]`, with subcommands. `consent` and `revoke` are
-  confirmed. **The full subcommand list has not been enumerated** — do that on the first run and
-  record it here, since it likely supersedes the hyphenated forms in the docs.
+- **`/design consent`** and **`/design revoke`** work. Neither appears in autocomplete.
+- **`/design status`, `import`, `export`, `sync`, `login`, and any free-form prompt** all return
+  `Usage: /design consent | /design revoke`. They are advertised and inert.
+- **No hyphenated form exists** — `/design-login`, `/design-sync` and friends are documentation
+  artifacts, not commands.
 
-Whether `/design-sync` still exists as a hyphenated command, or has become `/design sync`, is
-exactly the kind of thing the `/design-login` episode says not to assume. Check.
+So there is **no slash-command route to fetching anything.** Consent is auth, and auth only.
+
+The open hypothesis (see `ds-fetch` Step 1): consent may authorize the **MCP server**, exposing
+design access as MCP *tools* rather than commands. That would explain both the inert subcommands
+and how `ds-sync` mirrored 83 files. Test by enumerating MCP tools after consent — and record
+their **actual** names here, not `ds-sync`'s.
+
+Do not re-add `/design sync` or `/design import` to this file on the strength of a doc or an
+autocomplete hint. Both have already been wrong.
 
 ---
 

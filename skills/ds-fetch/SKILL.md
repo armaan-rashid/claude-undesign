@@ -55,37 +55,97 @@ A mirror without hashes forces every caller to re-walk the tree.
 **Verify the command surface in the environment before relying on it. The published docs are
 stale here, and have already sent this skill down a wrong path once.**
 
-Established in a real Claude Code environment, 2026-07-19:
+### Advertised surface is not working surface
 
-| Command | Reality |
-|---|---|
-| `/design-login` | **Does not exist.** Environment answers "isn't available in this environment." The support article still documents it. |
-| `/design` + subcommands | The actual surface. |
-| `/design consent` | Grants access. **This is the auth step.** |
-| `/design revoke` | Withdraws access. |
-| `/design login` | Exists, but only prints a pointer to `consent` / `revoke`. Does nothing itself. |
+Autocomplete offers this:
 
-Adding the MCP server is documented as a prerequisite:
-
-```sh
-claude mcp add --scope user --transport http claude-design https://api.anthropic.com/v1/design/mcp
+```
+/design [sync|login|import|export|status|<prompt>]
 ```
 
-**Status of that command: documented, not environment-verified.** It comes from the same support
-article that was wrong about `/design-login`, so treat it as a lead rather than a fact. If
-`/design` subcommands already respond, the server is connected and this step is moot.
+**Only two of those do anything.** Verified by running them, 2026-07-19:
 
-Headless and scheduled runs have no interactive claude.ai session, so lapsed consent fails there
-and only there — a fetch that works interactively and fails nightly is almost always this. Report
-it as a consent problem, not a fetch problem.
+| Command | Actual behavior |
+|---|---|
+| `/design consent` | **Works.** Grants access. Not advertised in autocomplete. |
+| `/design revoke` | **Works.** Withdraws access. Not advertised either. |
+| `/design status` | Prints `Usage: /design consent \| /design revoke` |
+| `/design import` | Same usage message |
+| `/design export` | Same usage message |
+| `/design sync` | Same usage message |
+| `/design login` | Same usage message |
+| `/design <any prompt>` | Same usage message — even though the hint claims to take a prompt |
+| `/design-login` and every other hyphenated form | Does not exist at all |
 
-**Do not "correct" this section back to what the docs say.** That regression is one search away,
-and the docs will still look authoritative when it happens. Environment beats documentation for
-command surfaces; re-verify in the environment, and update the table with the date if it moves.
+So the two commands that work are the two the hint omits, and the six it advertises are inert.
 
-## Step 1 — Resolve the target, and probe
+**This is the single most important thing in this skill.** Three separate authoritative-looking
+sources each described a Claude Design interface that does not behave as described:
 
-Read `references/fetch-paths.md` for the routes out of Claude Design and what each produces.
+1. Anthropic's support article documents `/design-login`. It does not exist.
+2. `ds-sync` documents a `DesignSync` tool with named read methods. Never verified; see Step 1.
+3. Autocomplete advertises six subcommands. Five are inert and it omits the two real ones.
+
+The rule that survives all three: **an advertised surface is a claim, not evidence.** Docs,
+existing skill files, and autocomplete hints are all leads. Running the thing is evidence. This is
+the same distinction `ds-contract-excavation` exists to draw — what code appears to depend on
+versus what is actually there — applied to our own tooling.
+
+Re-verify this table by running the commands, not by reading anything. Update it with a date when
+behavior moves.
+
+### Flow
+
+`/design consent`, and confirm it actually completed. There is no working status check — `status`
+is one of the inert subcommands, so the only signal that consent worked is whether design access
+subsequently functions.
+
+If `/design` does not respond at all, the MCP server may need adding. Documented as
+`claude mcp add --scope user --transport http claude-design https://api.anthropic.com/v1/design/mcp`
+— `[docs]`, unverified, from the article that invented `/design-login`. Treat accordingly.
+
+Headless and scheduled runs have no interactive session, so lapsed consent fails there and only
+there — a fetch that works interactively and fails nightly is almost always this. Report it as a
+consent problem, not a fetch problem.
+
+**Do not "correct" this section back to what any documentation says.** That regression is one
+search away, and the docs will still look authoritative when it happens.
+
+## Step 1 — Find the route that actually works
+
+Read `references/fetch-paths.md` for the routes and their verification status.
+
+**No slash command fetches anything.** `import`, `export`, and `sync` are inert. So the mechanism,
+if one exists, is not a command — which leaves one hypothesis worth testing and two routes that
+work today regardless.
+
+### The hypothesis to test
+
+`/design consent` plausibly authorizes the **MCP server**, which would expose design access as MCP
+*tools* rather than slash commands. That would reconcile everything: the inert subcommands, and
+`ds-sync` having somehow mirrored 83 files through something it calls `DesignSync`.
+
+Test it in one step: **after consent, enumerate the available MCP tools and look for design ones.**
+
+- **Design tools present** → that is the route. **Record their real names and signatures** in
+  `fetch-paths.md`. They may or may not match `ds-sync`'s `DesignSync` / `list_projects` /
+  `list_files` / `get_file`. Do not assume they do — that naming has never been verified against a
+  live server, and assuming is what produced the last three errors.
+- **No design tools** → there is no programmatic fetch. Say so plainly, mark R-1/R-2 `unavailable`
+  in `fetch-paths.md`, and use a UI route. Do not go hunting for an undocumented API.
+
+### The routes that work regardless
+
+Neither depends on anything unverified, so prefer them until the hypothesis is settled:
+
+- **Export from Claude Design, then normalize** (R-3 / R-4). The user clicks Export — "Handoff to
+  Claude Code → Send to local coding agent", or "Download as .zip". Skill takes it from there via
+  Step 2b. The handoff bundle additionally carries the README and design chat, which is the only
+  place design *intent* survives — worth preferring on those grounds alone.
+- **Already on disk** (R-5). How the pipeline's one real excavation fixture was actually obtained.
+
+Being honest that step 0 may be irreducibly manual is better than a skill that pretends to
+automate it and fails at the seam.
 
 Call `list_projects`. Then answer, **in writing, into `FETCH.json.capabilityProbe`**:
 
