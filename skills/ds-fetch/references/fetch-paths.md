@@ -45,14 +45,33 @@ move that produced the first error.
 
 ## R-1 — Claude Design MCP server, design-system project
 
-**Status:** `blocked` — no such server is registered, and the run that would corroborate it has no
-independent evidence.
+**Status:** server `confirmed` `[env]`; **tool surface not yet enumerated**
 
-### What `claude mcp list` shows (2026-07-19)
+### Connecting it — verified working, 2026-07-19
 
-Stripe, Google Drive, Gmail, Google Calendar, Figma — all claude.ai account connectors. **No
-`claude-design` server.** `/design consent` had already been run. So consent and server
-registration are separate things, and the server side has never happened on this machine.
+```sh
+claude mcp add --scope user --transport http claude-design https://api.anthropic.com/v1/design/mcp
+```
+
+`claude mcp list` then shows `claude-design: https://api.anthropic.com/v1/design/mcp (HTTP) - ✔ Connected`.
+
+**Consent and server registration are two separate things.** `/design consent` had already been run
+and no server existed; the endpoint had to be added explicitly. A skill that only checks consent
+will report success and then find no tools.
+
+**The docs were right about this one.** The same support article that invented `/design-login`
+carries a correct, current endpoint. The lesson from this file's header is *verify*, not *distrust
+documentation categorically* — overcorrecting into blanket suspicion would have thrown away the
+only working route. Sources are not uniformly reliable or unreliable; individual claims are.
+
+### Still open
+
+The server connects. **Its actual tool names and signatures have not been read yet.** Until they
+are, `ds-sync`'s `DesignSync` / `list_projects` / `list_files` / `get_file` remain invented — a
+connected server is not evidence for any particular tool name.
+
+Enumerate via `/mcp` in Claude Code, record the real names here, and only then rewrite `ds-fetch`
+Step 2 against them.
 
 ### What that implies about `[run-1]`
 
