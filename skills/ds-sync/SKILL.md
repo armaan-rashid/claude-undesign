@@ -18,6 +18,11 @@ Project: `Library of Light — Design System`, projectId `2035e932-f292-4d0a-af5
 Access via the `DesignSync` tool (read methods only: `list_projects`, `list_files`,
 `get_file`). NEVER call `finalize_plan` / `write_files` / `delete_files` here.
 
+**The mirror itself lives in `ds-fetch`.** That skill owns auth, `list_files` filtering, the
+`get_file` cap, skip rules, verbatim writes, and hashing — all of it learned on run 1 of this
+skill. This skill owns everything downstream: freshness, diff, the two lanes, screenshots,
+commits. Do not reimplement the mirror here; fix it in `ds-fetch` and both callers get the fix.
+
 ## Cheap freshness check
 
 `list_projects` → compare the project's `updatedAt` to `.ds-sync-state.json.syncedAt`. If it
@@ -32,15 +37,17 @@ shell; use `pgrep -x site`.)
 
 ## Phase 1 — Mirror + diff
 
-1. `list_files` (entries include bare directories — keep only real files: paths that are not
-   a prefix of another path, or just skip entries with no extension you can't `get_file`).
-2. `get_file` each path except `uploads/*` and `.thumbnail` (binary reference material —
-   record as skipped). Write verbatim into `design-system/<path>`.
-3. Hash (sha256) and diff against `.ds-sync-state.json`. The changed-set drives everything
-   below. Rewrite the state file: `{projectId, syncedAt, files: {path: "sha256:…"}, skipped}`.
+1. **Follow the `ds-fetch` skill**, with `dest` = repo root so the mirror lands in
+   `design-system/` as before. It handles bare-directory filtering, the 256 KiB `get_file` cap,
+   the `uploads/*` and `.thumbnail` skips, verbatim writes, subagent delegation for the ~250K
+   token mirror, and the hash sample re-verification. It returns `FETCH.json` with a sha256 per
+   file and a reasoned skip list.
+2. **Diff `FETCH.json.files` against `.ds-sync-state.json.files`.** Both are `{path: "sha256:…"}`,
+   so this is a map comparison — no re-walking the tree. The changed-set drives everything below.
+3. Rewrite the state file: `{projectId, syncedAt, files, skipped}`, carrying `ds-fetch`'s skip
+   list through verbatim. A file that moved from mirrored to skipped is a **change**, not a
+   deletion — check before treating an absence as upstream removal.
 4. Commit the mirror + state: `ds-sync: mirror <date>`.
-5. Delegate the mirror to a subagent when running interactively — it burns ~250K tokens of
-   context for ~80 files — and independently re-verify a sample of hashes afterwards.
 
 ## Phase 2 — Token lane (auto-apply)
 
@@ -90,6 +97,10 @@ interactive claude.ai session.
   cite them in verify judgments.
 - `ui_kits/library/*` is a future page, not part of the site: mirror it, act on nothing.
 - `_ds_bundle.js` / `_adherence.oxlintrc.json` are generated artifacts: mirror-only.
-- `uploads/*` may exceed the 256 KiB `get_file` cap and are images: always skip.
 - Run 1 baseline: 83 files, token lane applied cleanly (variable name-sets identical), 8
   component proposals awaiting review in `docs/ds-reconciliation-2026-07-16/`.
+
+The transport-level trip-wires from run 1 — bare directory entries in `list_files`, the 256 KiB
+`get_file` cap, `uploads/*` skipping, subagent delegation, hash re-verification — now live in
+`ds-fetch` and are enforced there. They are not repeated here on purpose: two copies drift, and
+the copy that drifts is always the one nobody ran.

@@ -5,19 +5,30 @@ Claude Code skills that port a Claude Design export (React) to another framework
 
 Design doc: [`design-port-pipeline-skills.md`](./design-port-pipeline-skills.md).
 
-Pipeline: `excavate → extract → codegen → verify`, orchestrated across git worktrees.
+Pipeline: `fetch → excavate → extract → codegen → verify`, orchestrated across git worktrees.
+
+Two skills share the fetch: `ds-fetch` mirrors and hashes, `ds-sync` diffs the result and runs
+its lanes. Transport-level knowledge (the `get_file` cap, bare-directory filtering, skip rules,
+subagent delegation) lives in `ds-fetch` only.
 
 ## Status
 
 | # | Skill | State |
 |---|---|---|
+| 0 | `ds-fetch` | drafted, unrun — carries an open capability probe |
 | 1 | `ds-contract-excavation` | drafted, one real run |
 | 2 | `ds-spec-extract` | drafted |
 | 3 | `ds-leptos-codegen` | drafted |
 | 4 | `ds-visual-verify` | drafted |
-| — | `ds-sync` | drafted |
+| — | `ds-sync` | drafted, one real run; Phase 1 delegates to `ds-fetch` |
 
 Skills 1–2 are useful standalone before codegen exists. See `feedback/` for run notes.
+
+**`ds-fetch` has an unresolved question in it by design.** It is confirmed that `DesignSync`
+reaches design-system projects (`ds-sync` run 1, 83 files). Whether the same API reaches app/site
+projects — the kind the port pipeline actually consumes — has never been tested. Step 1 of the
+skill probes it and writes the answer into `references/fetch-paths.md`. Until that first run,
+route R-2 is `unknown` and the fallback is a UI export route or an export already on disk.
 
 ## Layout
 
@@ -28,6 +39,9 @@ This repo is both a plugin marketplace and the plugin itself.
   marketplace.json                     # marketplace "design-port", lists one plugin
   plugin.json                          # plugin "design-port-pipeline"
 skills/
+  ds-fetch/
+    SKILL.md
+    references/fetch-paths.md          # routes out of Claude Design; confirmed/unknown status
   ds-contract-excavation/
     SKILL.md
     references/known-scaffolds.md      # per-generator contract catalog; grows with use
