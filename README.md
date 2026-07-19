@@ -11,18 +11,22 @@ Pipeline: `excavate → extract → codegen → verify`, orchestrated across git
 
 | # | Skill | State |
 |---|---|---|
-| 1 | `ds-contract-excavation` | drafted |
+| 1 | `ds-contract-excavation` | drafted, one real run |
 | 2 | `ds-spec-extract` | drafted |
-| 3 | `ds-leptos-codegen` | not started |
-| 4 | `ds-visual-verify` | not started |
-| 5 | `ds-port-orchestrator` | not started |
+| 3 | `ds-leptos-codegen` | drafted |
+| 4 | `ds-visual-verify` | drafted |
+| — | `ds-sync` | drafted |
 
-Skills 1–2 are useful standalone before codegen exists. Neither has been run against a real
-export yet — see Next.
+Skills 1–2 are useful standalone before codegen exists. See `feedback/` for run notes.
 
 ## Layout
 
+This repo is both a plugin marketplace and the plugin itself.
+
 ```
+.claude-plugin/
+  marketplace.json                     # marketplace "design-port", lists one plugin
+  plugin.json                          # plugin "design-port-pipeline"
 skills/
   ds-contract-excavation/
     SKILL.md
@@ -32,14 +36,67 @@ skills/
     references/spec-schema.md          # component spec schema (volatile layer)
     references/statechart-subset.md    # XState-compatible subset for states.machine
     references/tokens.md               # DTCG three-tier rules + Tailwind @theme mapping
+  ds-leptos-codegen/
+    SKILL.md
+    references/react-to-leptos.md
+    references/project-conventions.md
+  ds-visual-verify/
+    SKILL.md
+    references/harness-recipes.md
+  ds-sync/
+    SKILL.md
+feedback/                              # run notes, not shipped as skill content
 ```
 
-To use in a target repo, symlink or copy into `.claude/skills/`:
+`skills/`, `commands/`, `agents/` must sit at plugin root — **not** inside `.claude-plugin/`.
+Each skill's `references/` ships automatically with it; no registration needed in `plugin.json`.
+
+## Install
+
+### For another Cowork or Claude Code session (recommended)
+
+Push this repo to GitHub, then in the other session:
+
+```
+/plugin marketplace add <your-github-user>/<repo-name>
+/plugin install design-port-pipeline@design-port
+```
+
+All five skills load together. To pick up later changes: `/plugin marketplace update`.
+
+### From a local path
+
+```
+/plugin marketplace add "/Users/Armaan/Desktop/claude undesign"
+/plugin install design-port-pipeline@design-port
+```
+
+Local-path marketplaces have a known issue where the plugin registers but loads **0 skills**
+([#54967](https://github.com/anthropics/claude-code/issues/54967)). If that happens, symlink the
+directory into `~/.claude/plugins/marketplaces/` before running `marketplace add`, which keeps the
+relative `source: "./"` resolvable. Pushing to GitHub avoids this entirely.
+
+### Single skill, no plugin
+
+To use one skill in a target repo without installing the plugin, symlink it into `.claude/skills/`:
 
 ```sh
 ln -s "$PWD/skills/ds-contract-excavation" /path/to/repo/.claude/skills/
-ln -s "$PWD/skills/ds-spec-extract"        /path/to/repo/.claude/skills/
 ```
+
+### Validating before publishing
+
+```sh
+claude plugin validate --strict
+```
+
+Note what `validate` does **not** check: that each `SKILL.md` frontmatter `name` matches its
+directory name. Mismatches load fine in Claude Code but fail silently in VS Code. They currently
+all match — keep it that way when adding skills.
+
+Also: **no angle brackets in frontmatter.** `<framework>` in a description parses as an XML tag and
+blocks installation. This already bit `ds-spec-extract` once. Use a concrete example instead of a
+placeholder.
 
 ## Decisions
 

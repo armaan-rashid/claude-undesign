@@ -1,0 +1,28 @@
+{
+  "name": "design-port",
+  "owner": {
+    "name": "Armaan",
+    "email": "armaanrashid106@gmail.com"
+  },
+  "description": "Design-to-dev handoff pipeline: port AI-generated design exports to other frameworks via an explicit intermediate spec.",
+  "plugins": [
+    {
+      "name": "design-port-pipeline",
+      "source": "./",
+      "version": "0.1.0",
+      "description": "Port a Claude Design export (React) to another framework via a layered spec — DTCG tokens, component specs, and statecharts — rather than direct code translation. Includes contract excavation, spec extraction, Leptos codegen, visual verification, and sync.",
+      "author": {
+        "name": "Armaan"
+      },
+      "category": "development",
+      "keywords": [
+        "design-systems",
+        "design-tokens",
+        "codegen",
+        "leptos",
+        "porting",
+        "handoff"
+      ]
+    }
+  ]
+}
