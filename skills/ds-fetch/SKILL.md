@@ -171,23 +171,22 @@ rationale programmatically — the thing a bare file mirror loses, and the thing
 Where the tools are unavailable, say step 0 is manual and mean it. That beats a skill that claims
 automation and fails at the seam.
 
-### The one probe left
+### Resolving the target
 
-`list_projects` exists and is generic. **What it returns has not been observed.** Call it, then
-record, in writing, into `FETCH.json.capabilityProbe`:
+`list_projects` returns **both** design systems and app/site projects — settled `[env]` 2026-07-19.
+Step 0 is automatable; go to Step 2.
 
-> Does `list_projects` return app/site projects, or only design-system projects?
+Two things to handle when picking a project:
 
-The port pipeline consumes app/site projects; every verified fact so far concerns a design-system
-project. Note also `list_design_systems` as a separate tool — that the two are distinct hints the
-server may treat them as different kinds, which is exactly what this probe is asking about.
+- **Records carry no `type`.** Just `{id, name, url}`. "Business Site" vs "Design System" is a
+  naming convention, **not an API guarantee** — a site-sounding project may hold only tokens.
+  Confirm kind with `get_project` or `list_files`. Never branch on the name.
+- **No pagination signal.** Bare array, no cursor or total. If an expected project is absent,
+  suspect truncation before permissions.
 
-- **App projects listed** → route `mcp-tool`. Continue to Step 2.
-- **Only design systems** → the app export needs a UI route. Tell the user which, then Step 2b.
-
-Either way, **write the finding into `references/fetch-paths.md`** and move R-2 off `unknown`. An
-answer learned and not recorded is an answer paid for twice — the same catalog discipline
-`known-scaffolds.md` runs on.
+Ambiguous match → ask. Mirroring the wrong project burns the context budget and yields a
+confidently wrong baseline. Known IDs are in `references/fetch-paths.md`, including both excavation
+fixtures — useful as regression targets.
 
 ## Step 2 — Mirror (tool route)
 

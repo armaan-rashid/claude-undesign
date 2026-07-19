@@ -214,16 +214,56 @@ additive diffs.
 
 ## R-2 — Claude Design MCP server, app/site project
 
-**Status:** `unknown` — **this is the open question `ds-fetch` Step 1 exists to settle.**
+**Status:** `confirmed` `[env]` 2026-07-19 — `list_projects` is **not** design-system-only.
 
-Whether the server reaches app/site projects (the kind the port pipeline consumes) or only
-design-system projects has never been tested. Everything known comes from one run against a DS
-project `[run-1]`.
+10 projects returned, mixing design systems with things that read as apps/sites: *Pentacle Finance
+Dashboard*, *Tarot Guidebook*, *Human Design Business Site*, *Human Design Tone Guide*, *Tones for
+Ticket*, alongside five design systems.
 
-**Lead, not evidence** `[docs]`: the support article says that once connected you can "import a
-design into your codebase, export your code as a live prototype, or let Claude build the whole
-thing from start to finish." Importing a design into a codebase is exactly R-2. That is
-encouraging and it is still `[docs]` — the same source that invented `/design-login`. Run it.
+**The port pipeline's step 0 is automatable.** This was the question the whole skill was built to
+answer.
+
+### Response shape `[env]`
+
+```json
+{ "id": "2035e932-…", "name": "Library of Light — Design System",
+  "url": "https://claude.ai/design/p/2035e932-…" }
+```
+
+Three fields. Note what is **absent**:
+
+- **No `type` field.** App/site vs design system is inference from the *name*, not something the
+  API asserts. A project called "Human Design Business Site" could hold nothing but tokens. To
+  establish kind, call `get_project` or `list_files` on it. **Do not branch on name heuristics.**
+- **No `updatedAt`.** This kills the freshness check `ds-sync` describes — see the correction below.
+- **No pagination signal.** No cursor, total, or `has_more`; the tool takes no parameters and
+  returns a bare array. Whether 10 is everything or the first page is **unknown**. If a project you
+  expect is missing, suspect truncation before suspecting permissions.
+
+### Confirmed project IDs `[env]`
+
+| Project | ID |
+|---|---|
+| Library of Light — Design System | `2035e932-f292-4d0a-af54-37ded1de013c` |
+| Tarot Guidebook | `12661eb4-6be3-49ce-b247-73301fc06e37` |
+| Human Design Tone Guide | `645c05c4-1efd-4101-a173-28d510d64504` |
+
+The first **confirms `ds-sync`'s hardcoded projectId**, previously unverified. The other two are the
+excavation fixtures (`tarot guidebook`, `hd-tones` in `known-scaffolds.md`) — so the pipeline can
+re-fetch the very export it was validated against, which is the ideal regression fixture.
+
+### Correction: `list_projects` has no `updatedAt`
+
+`ds-sync`'s cheap freshness check reads `list_projects` → compare `updatedAt` to
+`.ds-sync-state.json.syncedAt`. **That field does not exist in the response.** Another `[run-1]`
+detail that was plausible and wrong. Try `get_project`; if it has no timestamp either, freshness
+must come from hashing, and the "cheap no-op" premise for nightly runs needs rethinking.
+
+### Still open
+
+Whether the *kind* distinction is real server-side. `list_design_systems` exists as a separate tool
+— comparing its output against `list_projects` settles typing by set difference, without relying on
+names. Run it.
 
 If it works, R-2 is the whole answer for the port pipeline and every UI route below becomes a
 fallback. If it does not, the port pipeline's step 0 is irreducibly manual and this skill's job is

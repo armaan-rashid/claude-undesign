@@ -15,7 +15,7 @@ subagent delegation) lives in `ds-fetch` only.
 
 | # | Skill | State |
 |---|---|---|
-| 0 | `ds-fetch` | drafted, unrun — carries an open capability probe |
+| 0 | `ds-fetch` | route confirmed `[env]`; mirror still unrun |
 | 1 | `ds-contract-excavation` | drafted, one real run |
 | 2 | `ds-spec-extract` | drafted |
 | 3 | `ds-leptos-codegen` | drafted |
@@ -24,11 +24,17 @@ subagent delegation) lives in `ds-fetch` only.
 
 Skills 1–2 are useful standalone before codegen exists. See `feedback/` for run notes.
 
-**`ds-fetch` has an unresolved question in it by design.** It is confirmed that `DesignSync`
-reaches design-system projects (`ds-sync` run 1, 83 files). Whether the same API reaches app/site
-projects — the kind the port pipeline actually consumes — has never been tested. Step 1 of the
-skill probes it and writes the answer into `references/fetch-paths.md`. Until that first run,
-route R-2 is `unknown` and the fallback is a UI export route or an export already on disk.
+**Step 0 is automatable.** The Claude Design MCP server (`claude-design`, 22 tools) reaches both
+design systems and app/site projects — confirmed 2026-07-19. Setup has three separate failure
+points that all look identical: consent is not server registration, `claude mcp list` reads config
+while `/mcp` reads the running session, and `--scope user` is Claude Code only. See `ds-fetch`
+Step 0.
+
+**What is verified vs. merely written down** is tracked per claim, with `[env]` / `[run-1]` /
+`[docs]` tags in `ds-fetch/references/fetch-paths.md`. This matters more than it sounds: four
+separate authoritative-looking sources described interfaces that do not behave as described — the
+support docs (`/design-login`), an earlier skill file (`get_file`), the `/design` autocomplete, and
+the server's own tool annotations. Running the thing is the only evidence that counts.
 
 ## Layout
 

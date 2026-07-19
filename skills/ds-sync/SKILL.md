@@ -55,10 +55,21 @@ tagged destructive at all. The curated lists live in `ds-fetch/references/fetch-
 file-read size cap, skip rules, verbatim writes, and hashing. This skill owns everything downstream: freshness, diff, the two lanes, screenshots,
 commits. Do not reimplement the mirror here; fix it in `ds-fetch` and both callers get the fix.
 
-## Cheap freshness check
+## Freshness check — BROKEN AS WRITTEN
 
-`list_projects` → compare the project's `updatedAt` to `.ds-sync-state.json.syncedAt`. If it
-hasn't moved, report "in sync" and stop. (Scheduled runs must be a cheap no-op most nights.)
+This skill originally said: `list_projects` → compare `updatedAt` to
+`.ds-sync-state.json.syncedAt`.
+
+**`list_projects` returns only `{id, name, url}`.** There is no `updatedAt` (verified `[env]`
+2026-07-19). Another `[run-1]` detail that was plausible and wrong.
+
+Before the nightly path can work, establish whether **`get_project`** carries a timestamp. If it
+does, use it. If it does not, there is no cheap freshness signal, and a scheduled run must either
+mirror-and-hash every night — which is not a no-op and blows the context budget — or the schedule
+premise needs rethinking. **Resolve this before trusting a nightly run**; do not silently fall back
+to mirroring every time.
+
+Project id is confirmed `[env]`: `2035e932-f292-4d0a-af54-37ded1de013c`.
 
 ## Phase 0 — BEFORE screenshots
 
