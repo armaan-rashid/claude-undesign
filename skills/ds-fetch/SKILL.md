@@ -50,12 +50,38 @@ need a write back to Claude Design, stop and ask — this pipeline is one-way by
 diff reduces to comparing two `FETCH.json` files, and the port pipeline gets provenance for free.
 A mirror without hashes forces every caller to re-walk the tree.
 
-## Step 0 — Auth
+## Step 0 — Connect and consent
 
-`DesignSync` requires a standing Claude Design authorization (`/design-login`). Check first.
-Headless and scheduled runs have no interactive claude.ai session, so an expired authorization
-fails there and only there — a fetch that works interactively and fails nightly is almost always
-this. Report it as an auth problem, not a fetch problem.
+**Verify the command surface in the environment before relying on it. The published docs are
+stale here, and have already sent this skill down a wrong path once.**
+
+Established in a real Claude Code environment, 2026-07-19:
+
+| Command | Reality |
+|---|---|
+| `/design-login` | **Does not exist.** Environment answers "isn't available in this environment." The support article still documents it. |
+| `/design` + subcommands | The actual surface. |
+| `/design consent` | Grants access. **This is the auth step.** |
+| `/design revoke` | Withdraws access. |
+| `/design login` | Exists, but only prints a pointer to `consent` / `revoke`. Does nothing itself. |
+
+Adding the MCP server is documented as a prerequisite:
+
+```sh
+claude mcp add --scope user --transport http claude-design https://api.anthropic.com/v1/design/mcp
+```
+
+**Status of that command: documented, not environment-verified.** It comes from the same support
+article that was wrong about `/design-login`, so treat it as a lead rather than a fact. If
+`/design` subcommands already respond, the server is connected and this step is moot.
+
+Headless and scheduled runs have no interactive claude.ai session, so lapsed consent fails there
+and only there — a fetch that works interactively and fails nightly is almost always this. Report
+it as a consent problem, not a fetch problem.
+
+**Do not "correct" this section back to what the docs say.** That regression is one search away,
+and the docs will still look authoritative when it happens. Environment beats documentation for
+command surfaces; re-verify in the environment, and update the table with the date if it moves.
 
 ## Step 1 — Resolve the target, and probe
 

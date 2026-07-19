@@ -88,8 +88,12 @@ Interactive session: report lanes + screenshots, surface open questions.
 Scheduled (headless) run: commit to a `ds-sync/<date>` branch, push, notify with the summary
 (push notification on: token lane applied / proposal awaiting review / lane FAILED; silent
 no-op otherwise). Prerequisites for headless runs: the GitHub remote cloneable from the run
-environment, and a standing Claude Design authorization (`/design-login`) since there is no
-interactive claude.ai session.
+environment, and standing Claude Design consent since there is no interactive claude.ai session.
+
+**Consent is `/design consent`, not `/design-login`.** The hyphenated form does not exist in the
+environment (verified 2026-07-19) despite still appearing in Anthropic's support docs; the surface
+is `/design` with subcommands. `ds-fetch` Step 0 carries the full table — do not re-derive this
+from documentation.
 
 ## Known trip-wires (learned on run 1, 2026-07-16)
 
