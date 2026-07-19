@@ -25,9 +25,14 @@ need a write back to Claude Design, stop and ask — this pipeline is one-way by
 ```
 <dest>/
   source/            # verbatim mirror, original paths preserved
+  intent/            # design chat, prompt, comments — why, not what
   FETCH.json         # machine-readable manifest (hashes, skips, provenance)
   FETCH.md           # same thing, human-readable
 ```
+
+`intent/` is not decoration. `ds-spec-extract` must invent semantic token names wherever the export
+carries only raw values, and intent is the difference between a name that is right and one that is
+merely plausible. Fetch it whenever the route allows.
 
 `<dest>` is caller-supplied. Defaults: `design-export/<project-slug>/` for the port pipeline,
 `design-system/` when `ds-sync` calls it (that path is already established in that repo).
@@ -119,20 +124,30 @@ Read `references/fetch-paths.md` for the routes and their verification status.
 if one exists, is not a command — which leaves one hypothesis worth testing and two routes that
 work today regardless.
 
-### The hypothesis to test
+### Settled — the route is MCP tools
 
-`/design consent` plausibly authorizes the **MCP server**, which would expose design access as MCP
-*tools* rather than slash commands. That would reconcile everything: the inert subcommands, and
-`ds-sync` having somehow mirrored 83 files through something it calls `DesignSync`.
+`/design consent` authorizes the **MCP server**, which exposes design access as MCP *tools*, not
+slash commands. Verified `[env]` 2026-07-19: 22 tools on server `claude-design`.
 
-Test it in one step: **after consent, enumerate the available MCP tools and look for design ones.**
+Setup, in order — each step is separate and skipping one fails silently:
 
-- **Design tools present** → that is the route. **Record their real names and signatures** in
-  `fetch-paths.md`. They may or may not match `ds-sync`'s `DesignSync` / `list_projects` /
-  `list_files` / `get_file`. Do not assume they do — that naming has never been verified against a
-  live server, and assuming is what produced the last three errors.
-- **No design tools** → there is no programmatic fetch. Say so plainly, mark R-1/R-2 `unavailable`
-  in `fetch-paths.md`, and use a UI route. Do not go hunting for an undocumented API.
+```sh
+claude mcp add --scope user --transport http claude-design https://api.anthropic.com/v1/design/mcp
+```
+
+then `/design consent`, then **restart Claude Code**.
+
+Three distinct trip-wires, each of which looks like the others:
+
+- **Consent is not registration.** Consent can be granted with no server registered. Check both.
+- **`claude mcp list` reads config; `/mcp` reads the running session.** `list` will report
+  `✔ Connected` while the current session has no such tools, because it loaded before the server
+  was added. A skill that verifies via `mcp list` and concludes availability will find nothing at
+  runtime. Restart, then confirm with `/mcp`.
+- **Claude Code only.** `--scope user` writes Claude Code's config. Cowork sees claude.ai account
+  connectors, not this. A Cowork session cannot use this route, restart or no restart.
+
+Go to Step 2 once `/mcp` lists `claude-design`.
 
 ### The routes that work regardless
 
@@ -166,20 +181,41 @@ from `unknown` to `confirmed` or `unavailable`. Do not leave the next run to red
 is the same catalog discipline `known-scaffolds.md` runs on, for the same reason: an answer
 learned and not recorded is an answer paid for twice.
 
-## Step 2 — Mirror (tool route) — UNEXECUTED
+## Step 2 — Mirror (tool route)
 
-**This step has never run.** It was written from `ds-sync`'s Phase 1, which was itself written as
-though a run had happened when it had not (confirmed with the author, 2026-07-19). No Claude Design
-MCP server is registered, so nothing here has ever touched a live server.
+**Tool names verified `[env]` 2026-07-19; the mirror itself has still never executed.** Names are
+solid. Behavioral details — the size cap, what `list_files` returns — are untested.
 
-An earlier revision of this file said these trip-wires were "confirmed from ds-sync run 1... not
-speculative." That was false, and it is the clearest example in this project of the failure this
-skill now warns about: an unverified claim in one file laundered into a confirmed claim in another
-by citing a run that did not happen.
+Server `claude-design`, tools fully qualified `mcp__claude-design__<name>`. Full catalog and the
+never-call list in `references/fetch-paths.md`. Read it before calling anything.
 
-Keep the steps — they are a **reasonable design** for a mirror, and reasonable is worth something.
-Just do not treat any specific number or method name below as observed. On first real execution,
-correct them against what the server actually does and re-tag them `[env]`.
+**The annotations lie.** `list_files` and `read_file` are tagged `read-only, destructive` at once;
+`finalize_plan` — which writes — is not tagged destructive at all. Never decide safety from an
+annotation here. Use the curated lists in the reference.
+
+1. **`list_projects`** → find the target. If several match, ask; do not guess.
+2. **`get_project`** → metadata. Compare against prior state before mirroring; a cheap no-op beats
+   a needless 250K-token walk.
+3. **`list_files`** → the file listing. `[run-1]`, untested: entries may include bare directories
+   mixed with files. Filter to paths that are not a prefix of another path, and treat a failed read
+   on an extensionless path as confirmation rather than an error.
+4. **`read_file`** each kept path — **not `get_file`, which does not exist.** Write **verbatim**
+   into `<dest>/source/<path>`. No reformatting, no line-ending normalization. This is a mirror;
+   editing bytes here corrupts the excavation's file:line evidence downstream.
+5. **Skip `uploads/*` and `.thumbnail`** `[run-1]`, untested: binary reference material, and a size
+   cap around 256 KiB is claimed. Record every skip with its reason — a silent skip becomes a
+   phantom missing dependency in `CONTRACTS.md`. **If the real cap differs, correct the reference.**
+6. **Hash each file** (sha256) as written.
+7. **Also fetch intent**, which a plain file mirror misses entirely: `get_conversation`,
+   `get_claude_design_prompt`, `list_comments`. Land them under `<dest>/intent/` and list them in
+   `FETCH.json`. `ds-spec-extract` invents semantic token names from raw values, and this is the
+   only thing that tells it *why* a value was chosen.
+8. **Delegate to a subagent when interactive** — a large mirror burns context the parent needs for
+   the actual port. Re-verify a hash sample afterwards; a subagent reporting success is not the
+   same as bytes on disk.
+
+On first real execution, correct every `[run-1]` detail above against observed behavior and re-tag
+it `[env]`.
 
 1. **`list_files` returns bare directories mixed in with files.** Keep only real files: paths
    that are not a prefix of another path. Directory entries have no extension and fail `get_file`.

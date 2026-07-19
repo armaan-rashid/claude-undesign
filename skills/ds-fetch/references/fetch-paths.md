@@ -79,14 +79,70 @@ Corollary worth remembering: "design" tools visible in a session may belong to *
 different server and prove nothing about Claude Design access. Check the server prefix, not the
 tool name — this nearly produced a false positive twice.
 
-### Still open
+### The tool surface — enumerated `[env]` 2026-07-19
 
-The server connects. **Its tool names and signatures have not been read.** Until they are,
-`ds-sync`'s `DesignSync` / `list_projects` / `list_files` / `get_file` remain invented — a connected
-server is not evidence for any particular tool name.
+22 tools on server `claude-design`. Fully qualified as `mcp__claude-design__<name>`.
 
-Enumerate with `/mcp` in Claude Code, record the real names here, then rewrite `ds-fetch` Step 2
-against them and drop its UNEXECUTED banner.
+**Read — the pipeline uses these:**
+
+| Tool | Use |
+|---|---|
+| `list_projects` | Enumerate projects. Entry point. |
+| `get_project` | Project metadata. Freshness check before mirroring. |
+| `list_files` | File listing for a project. |
+| `read_file` | Read one file. **Not `get_file`** — that name does not exist. |
+| `list_design_systems` | Enumerate design systems. |
+| `get_conversation` | **The design chat.** See below — this matters more than it looks. |
+| `get_claude_design_prompt` | The prompt behind a design. Also intent. |
+| `list_comments` | Inline comments on a design. Intent again. |
+| `list_members` | Not needed here. |
+
+**Never call — mutating:**
+
+`write_files` · `delete_files` · `copy_files` · `finalize_plan` · `put_conversation` ·
+`create_project` · `create_support_js` · `add_member` · `remove_member` · `update_member_role` ·
+`update_sharing` · `ack_comments`
+
+**Unclear, so don't:** `render_preview` may have server-side effects. Not needed for a fetch.
+
+### Trip-wire: the annotations are incoherent — do not filter on them
+
+Read the annotations carefully and they contradict themselves:
+
+- `list_files`, `read_file`, `list_projects`, `get_project` are all tagged **`read-only, destructive`
+  simultaneously.** Those are mutually exclusive.
+- `finalize_plan`, which commits a plan, is tagged only `open-world` — **not** destructive.
+
+So a skill that allowlists by `read-only` gets nothing usable, and one that blocklists by
+`destructive` sails straight into `finalize_plan`. **Decide from the tool's name and semantics,
+never from its annotation.** The read/never lists above are curated by hand for exactly this reason.
+
+### `get_conversation` — the intent source
+
+`ds-spec-extract` has to invent semantic token names when an export carries only raw values, and
+its output quality turns on whether it knows *why* a value was chosen. R-3 was preferred partly
+because a handoff bundle "carries the chat."
+
+`get_conversation`, `get_claude_design_prompt`, and `list_comments` make that intent reachable
+**programmatically, without the UI route at all.** That is a better answer than R-3, and nothing in
+this pipeline knew it existed an hour ago. Wire them into `ds-fetch`'s output so extraction gets
+intent alongside the file mirror.
+
+### What this settles about `ds-sync`
+
+Five of its six method names are real. That is not invention — someone had genuine exposure to this
+server. My earlier conclusion that the transport half was fabricated **was too strong, and is
+retracted.**
+
+What stands: `get_file` is wrong (it is `read_file`), so that call would have failed on contact —
+which is consistent with the author's own account that the fetch never ran. Real names, unexecuted
+code. The remaining `[run-1]` details — the 256 KiB cap, bare-directory entries, the 83-file count —
+are still unverified, but they are now better described as **plausible and untested** rather than
+invented.
+
+The correction runs both ways: over-trusting a source and over-correcting into blanket suspicion
+are the same error with opposite signs. Tag each claim, test what you can, and let the evidence
+move individual claims rather than whole files.
 
 ### What that implies about `[run-1]`
 

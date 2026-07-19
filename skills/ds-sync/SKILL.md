@@ -23,21 +23,33 @@ state in `.ds-sync-state.json` connect the two.
 | **Repo-side** — Phases 0, 2, 3, 4: builds, screenshots, the token lane, the component gate, the Leptos reconciliation | **Executed.** Hard-won and worth trusting. |
 | **Transport** — Phase 1: reaching Claude Design, the mirror, the 83-file count | **Never executed.** |
 
-The transport half was written as though a run had happened. It had not. Consequences:
+The transport half was written as though a run had happened. It had not. But the tool surface has
+since been enumerated `[env]`, and the picture is more interesting than "made up":
 
-- The `DesignSync` tool name and its `list_projects` / `list_files` / `get_file` methods are
-  **invented until proven otherwise.** No such server is registered (`claude mcp list`, 2026-07-19).
-- The "83 files", the 256 KiB `get_file` cap, and the bare-directory filtering are **not
-  observations.** They are plausible-sounding detail with nothing behind them.
-- `ds-fetch` Step 2 was built on those claims and inherits the doubt. Fix in `ds-fetch`.
+- **`list_projects`, `list_files`, `finalize_plan`, `write_files`, `delete_files` are all real.**
+  Five of six names correct. Someone had genuine exposure to this server.
+- **`get_file` does not exist.** The real tool is **`read_file`**. That single wrong name means the
+  mirror would have died on first contact — consistent with it never having run.
+- The server is `claude-design`, tools fully qualified `mcp__claude-design__<name>`. **`DesignSync`
+  is not a tool name**; at best it was shorthand for the server.
+- The "83 files", the 256 KiB cap, and bare-directory filtering remain untested — but they are
+  **plausible and unverified**, not invented.
+
+An earlier revision of this note called the whole transport half fabricated. That was too strong
+and is retracted. Over-trusting a source and over-correcting into blanket suspicion are the same
+error with opposite signs; evidence should move individual claims, not whole files.
 
 What survives is specific enough to be real: build twice because `build.rs` copies CSS mid-build;
 `pgrep -x site` rather than `pkill -f target/debug/site` because the pattern matches the invoking
 shell. Nobody invents those. Keep them.
 
 Project: `Library of Light — Design System`, projectId `2035e932-f292-4d0a-af54-37ded1de013c`
-(also unverified). Whatever the read methods turn out to be called, **never** call anything that
-writes back — the read-only policy holds independent of naming.
+(still unverified — confirm via `list_projects`).
+
+**Never call** `write_files`, `delete_files`, `copy_files`, `finalize_plan`, `put_conversation`, or
+any member/sharing tool. And **do not use the MCP annotations to decide that**: `list_files` and
+`read_file` are tagged `read-only, destructive` at the same time, while `finalize_plan` is not
+tagged destructive at all. The curated lists live in `ds-fetch/references/fetch-paths.md`.
 
 **The mirror itself lives in `ds-fetch`.** That skill owns auth, `list_files` filtering, the
 `get_file` cap, skip rules, verbatim writes, and hashing — all of it learned on run 1 of this

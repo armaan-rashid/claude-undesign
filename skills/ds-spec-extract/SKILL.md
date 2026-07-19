@@ -29,6 +29,18 @@ codegen fallback to React source is a logged spec gap that comes back to this sk
    disagreement — a bundle/source disagreement is a real finding, usually meaning the source
    drifted from the design.
 
+   Caveat from the excavation `[run-1]`: the bundle's `_ds_manifest.json` **lags the CSS.** In the
+   fixture it omitted an entire token tier the CSS had and the app used. Reconcile against
+   `colors_and_type.css`; the CSS wins on additive diffs.
+
+4. **`<dest>/intent/` from `ds-fetch`, if present** — the design chat (`get_conversation`), the
+   originating prompt (`get_claude_design_prompt`), and inline comments (`list_comments`).
+
+   This is the input that makes Step 1's invented semantic names right rather than merely
+   plausible. Source tells you a value is `#2563eb`; intent tells you it is the primary action
+   colour and why it changed from the last one. **Read it before naming anything**, and cite it in
+   `$description` when it explains a choice.
+
 ## Outputs
 
 ```
