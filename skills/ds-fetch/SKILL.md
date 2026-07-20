@@ -102,9 +102,11 @@ docs describe them accurately.
 - **`/design-login`** `[env]` — browser sign-in flow, then prints "Design-system access
   authorized." A **second auth scope**, distinct from `/design consent`. Whether the MCP tools
   benefit from it, or only `/design-sync` does, is untested.
-- **`/design-sync`** — **do not invoke yet.** Documented as *bidirectional*: it can push code
-  changes back to Claude Design. Every skill here is read-only. Establish its direction before any
-  skill calls it; a silent push would violate the core policy with no error to notice.
+- **`/design-sync`** — **NEVER CALL IT.** Settled `[env]`: it is a **write**, going code → Claude
+  Design. It uploads a design-system repo *into* a Claude Design project, creates a new project,
+  commits `.design-sync/` + `NOTES.md` + `conventions.md` into your repo, and costs up to hours on
+  a large one. The exact opposite direction from this pipeline. Full detail, including the artifact
+  list it uploads, in `references/fetch-paths.md`.
 
 ### Auth — two scopes, run both
 
