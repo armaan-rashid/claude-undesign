@@ -259,11 +259,34 @@ re-fetch the very export it was validated against, which is the ideal regression
 detail that was plausible and wrong. Try `get_project`; if it has no timestamp either, freshness
 must come from hashing, and the "cheap no-op" premise for nightly runs needs rethinking.
 
-### Still open
+### Typing by set-difference does not work `[env]`
 
-Whether the *kind* distinction is real server-side. `list_design_systems` exists as a separate tool
-— comparing its output against `list_projects` settles typing by set difference, without relying on
-names. Run it.
+`list_design_systems` **omits projects that were created as design systems.** Verified 2026-07-19.
+So `list_projects` minus `list_design_systems` does **not** yield "app/site projects," and this
+file previously recommended exactly that. Withdrawn.
+
+**Live hypothesis** (untested — do not act on it yet): the design-system setup flow has a
+**"Published" toggle** `[docs]`, and publishing is what makes a system available to projects
+org-wide. If `list_design_systems` enumerates *published* systems rather than *all projects of that
+kind*, the missing ones are unpublished drafts. Test by checking whether the returned set is
+exactly the published set.
+
+If that holds, the modelling consequence is real: **"design system" is a role a project plays, not
+a type it has.** A project can be a design system and not appear in the design-systems list. Any
+code branching on kind needs to say *which* sense it means.
+
+### Establishing a project's kind — what to actually do
+
+There is **no reliable type signal** from the listing tools:
+
+- `list_projects` has no `type` field.
+- Names are convention, not contract.
+- `list_design_systems` is incomplete for this purpose.
+
+So: call `get_project` or `list_files` on the specific project and decide from its **contents** —
+a `colors_and_type.css` / `_ds_manifest.json` / `components/core/*` shape is a design system;
+page-level sources and a host HTML are an app. Slower, and it is the only method not yet
+falsified.
 
 If it works, R-2 is the whole answer for the port pipeline and every UI route below becomes a
 fallback. If it does not, the port pipeline's step 0 is irreducibly manual and this skill's job is

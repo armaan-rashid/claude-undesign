@@ -178,9 +178,11 @@ Step 0 is automatable; go to Step 2.
 
 Two things to handle when picking a project:
 
-- **Records carry no `type`.** Just `{id, name, url}`. "Business Site" vs "Design System" is a
-  naming convention, **not an API guarantee** — a site-sounding project may hold only tokens.
-  Confirm kind with `get_project` or `list_files`. Never branch on the name.
+- **There is no reliable type signal.** Records are `{id, name, url}` with no `type`; names are
+  convention, not contract; and `list_design_systems` **omits projects created as design systems**,
+  so set-difference does not work either (all three verified `[env]`). Determine kind from
+  **contents** via `get_project` / `list_files`: tokens CSS + `_ds_manifest.json` +
+  `components/core/*` is a design system; page sources and a host HTML are an app.
 - **No pagination signal.** Bare array, no cursor or total. If an expected project is absent,
   suspect truncation before permissions.
 
