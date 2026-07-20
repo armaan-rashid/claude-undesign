@@ -10,6 +10,19 @@ description: >
 
 # Design-System Sync (Claude Design → Leptos)
 
+> **Runs in Claude Code, not Cowork.**
+>
+> This skill needs the `claude-design` MCP server plus a Rust/Leptos toolchain (`cargo leptos`, a local dev server, screenshots) against a working copy of the target repo.
+>
+> **If you are reading this in Cowork:** do not improvise a workaround. Cowork cannot reach
+> Claude Code's MCP servers or the user's toolchain, and its sandbox is a separate filesystem from
+> the user's machine. Stop and tell the user to run this in Claude Code, in the target repo.
+>
+> Detect it cheaply: if `mcp__claude-design__*` tools are absent when this skill needs them, or the
+> repo's build tooling is missing, you are in the wrong client. Say so plainly rather than
+> producing a degraded result that looks like a real one.
+
+
 One-way sync. Source of truth for the *design* is the Claude Design project; source of truth
 for the *Rust rendering* is this repo. The committed mirror in `design-system/` and the hash
 state in `.ds-sync-state.json` connect the two.

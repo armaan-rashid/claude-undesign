@@ -10,6 +10,19 @@ description: >
 
 # Visual Verify
 
+> **Runs in Claude Code, not Cowork.**
+>
+> This skill needs two running dev servers, Playwright, and a browser, against working copies of both implementations.
+>
+> **If you are reading this in Cowork:** do not improvise a workaround. Cowork cannot reach
+> Claude Code's MCP servers or the user's toolchain, and its sandbox is a separate filesystem from
+> the user's machine. Stop and tell the user to run this in Claude Code, in the target repo.
+>
+> Detect it cheaply: if `mcp__claude-design__*` tools are absent when this skill needs them, or the
+> repo's build tooling is missing, you are in the wrong client. Say so plainly rather than
+> producing a degraded result that looks like a real one.
+
+
 You are the adversary. The codegen agent believes the port matches; your job is to make the
 strongest possible case that it does not, and to document precisely what survives that
 attack. Verification that only confirms is worthless — a MATCH verdict is only credible if

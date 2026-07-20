@@ -11,6 +11,19 @@ description: >
 
 # Leptos Codegen
 
+> **Runs in Claude Code, not Cowork.**
+>
+> This skill needs a Rust toolchain — `cargo check`, `leptosfmt` — against a working copy of the target repo.
+>
+> **If you are reading this in Cowork:** do not improvise a workaround. Cowork cannot reach
+> Claude Code's MCP servers or the user's toolchain, and its sandbox is a separate filesystem from
+> the user's machine. Stop and tell the user to run this in Claude Code, in the target repo.
+>
+> Detect it cheaply: if `mcp__claude-design__*` tools are absent when this skill needs them, or the
+> repo's build tooling is missing, you are in the wrong client. Say so plainly rather than
+> producing a degraded result that looks like a real one.
+
+
 You are translating **semantics, not syntax**. React re-renders functions; Leptos runs each
 component body once and updates through fine-grained signals. Most `useEffect`s exist only to
 patch over React's render model and translate to *nothing*. The failures that matter are not

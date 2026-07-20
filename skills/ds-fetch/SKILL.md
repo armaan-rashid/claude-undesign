@@ -10,6 +10,19 @@ description: >
 
 # Fetch from Claude Design
 
+> **Runs in Claude Code, not Cowork.**
+>
+> This skill needs the `claude-design` MCP server, which is registered with `claude mcp add --scope user` — **Claude Code's config, which Cowork does not read**.
+>
+> **If you are reading this in Cowork:** do not improvise a workaround. Cowork cannot reach
+> Claude Code's MCP servers or the user's toolchain, and its sandbox is a separate filesystem from
+> the user's machine. Stop and tell the user to run this in Claude Code, in the target repo.
+>
+> Detect it cheaply: if `mcp__claude-design__*` tools are absent when this skill needs them, or the
+> repo's build tooling is missing, you are in the wrong client. Say so plainly rather than
+> producing a degraded result that looks like a real one.
+
+
 Step 0 of the port pipeline. Gets bytes onto disk faithfully and tells you exactly what landed,
 so `ds-contract-excavation` has something to excavate.
 
@@ -61,47 +74,48 @@ A mirror without hashes forces every caller to re-walk the tree.
 **Verify the command surface in the environment before relying on it. The published docs are
 stale here, and have already sent this skill down a wrong path once.**
 
-### Advertised surface is not working surface
+### The command surface differs by client
 
-Autocomplete offers this:
+**`/design-sync` and `/design-login` exist in Claude Code. They do not exist in Cowork.** Same
+feature, different surface per client — which means "does this command exist?" has no
+environment-independent answer.
 
-```
-/design [sync|login|import|export|status|<prompt>]
-```
+**In Cowork** `[env]` 2026-07-19 — autocomplete offers
+`/design [sync|login|import|export|status|<prompt>]`, and five of six are inert:
 
-**Only two of those do anything.** Verified by running them, 2026-07-19:
-
-| Command | Actual behavior |
+| Command | Behavior in Cowork |
 |---|---|
-| `/design consent` | **Works.** Grants access. Not advertised in autocomplete. |
-| `/design revoke` | **Works.** Withdraws access. Not advertised either. |
-| `/design status` | Prints `Usage: /design consent \| /design revoke` |
-| `/design import` | Same usage message |
-| `/design export` | Same usage message |
-| `/design sync` | Same usage message |
-| `/design login` | Same usage message |
-| `/design <any prompt>` | Same usage message — even though the hint claims to take a prompt |
-| `/design-login` and every other hyphenated form | Does not exist at all |
+| `/design consent` | **Works.** Grants access. Not in autocomplete. |
+| `/design revoke` | **Works.** Withdraws access. Not in autocomplete either. |
+| `/design status` · `import` · `export` · `sync` · `login` · any prompt | All print `Usage: /design consent \| /design revoke` |
+| `/design-login`, `/design-sync` | Not available in this environment |
 
-So the two commands that work are the two the hint omits, and the six it advertises are inert.
+**In Claude Code** — `/design-sync` and `/design-login` exist, as the support docs describe.
+Behavior not yet catalogued here; see `references/fetch-paths.md`.
 
-**This is the single most important thing in this skill.** Three separate authoritative-looking
-sources each described a Claude Design interface that does not behave as described:
+### What the confusion actually taught
 
-1. Anthropic's support article documents `/design-login`. It does not exist.
-2. `ds-sync` documents a `DesignSync` tool. No tool by that name exists — though five of its six
-   *method* names turned out real, so the source was neither reliable nor worthless.
-3. Autocomplete advertises six subcommands. Five are inert and it omits the two real ones.
-4. The server's own tool annotations mark `list_files` both `read-only` and `destructive`, and
+Four authoritative-looking sources described interfaces that did not behave as described *in the
+environment where they were tested*:
+
+1. `ds-sync` names a `DesignSync` tool. No tool by that name exists — though five of its six
+   *method* names are real, so the source was neither reliable nor worthless.
+2. Cowork's `/design` autocomplete advertises six subcommands; five are inert and it omits the two
+   that work.
+3. The server's tool annotations mark `list_files` both `read-only` and `destructive`, and
    `finalize_plan` as neither.
+4. **This skill** previously asserted `/design-login` "does not exist," generalizing from Cowork to
+   everywhere. The docs were right; the test was run in the wrong client.
 
-The rule that survives all three: **an advertised surface is a claim, not evidence.** Docs,
-existing skill files, and autocomplete hints are all leads. Running the thing is evidence. This is
-the same distinction `ds-contract-excavation` exists to draw — what code appears to depend on
-versus what is actually there — applied to our own tooling.
+Two rules, and the second was learned the hard way:
 
-Re-verify this table by running the commands, not by reading anything. Update it with a date when
-behavior moves.
+- **An advertised surface is a claim, not evidence.** Docs, skill files, and autocomplete hints are
+  leads. Running the thing is evidence.
+- **A negative result is scoped to where you ran it.** "Command X does not exist" is only ever
+  "does not exist *in client Y*." Record the client with every observation — an unscoped negative
+  is how correct documentation gets overwritten with a local quirk.
+
+Re-verify by running commands, and write down **which client** you ran them in.
 
 Note also that the docs were **right** about the MCP endpoint (Step 1) while wrong about
 `/design-login`. The rule is *verify*, not *distrust documentation categorically* — blanket

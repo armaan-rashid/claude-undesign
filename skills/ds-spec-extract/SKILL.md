@@ -11,6 +11,20 @@ description: >
 
 # Spec Extraction
 
+> **Mostly a Claude Code skill.**
+>
+> This skill needs a checked-out export tree plus `CONTRACTS.md` — nothing client-specific, so it **will** run in Cowork provided the
+> files are in a connected folder. Say which environment you ran in when you record results.
+>
+> But the pipeline it feeds is Claude Code-only: `ds-fetch` and `ds-sync` need the `claude-design`
+> MCP server (registered in Claude Code's config, which Cowork does not read), and the codegen and
+> verify skills need the Rust toolchain and dev servers on the user's machine. Cowork's sandbox is
+> a separate filesystem from the user's computer.
+>
+> **If the inputs are not reachable, stop and say so.** Do not produce a partial result that looks
+> complete — tell the user to run this in Claude Code, in the target repo.
+
+
 The durable interchange format between a design and an implementation is **not code**. It is a
 layered spec: tokens, component specs, interaction contracts. The React export is one *rendering*
 of that spec. This skill recovers the spec so it can be re-rendered elsewhere.
