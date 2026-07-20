@@ -265,15 +265,27 @@ must come from hashing, and the "cheap no-op" premise for nightly runs needs ret
 So `list_projects` minus `list_design_systems` does **not** yield "app/site projects," and this
 file previously recommended exactly that. Withdrawn.
 
-**Live hypothesis** (untested — do not act on it yet): the design-system setup flow has a
-**"Published" toggle** `[docs]`, and publishing is what makes a system available to projects
-org-wide. If `list_design_systems` enumerates *published* systems rather than *all projects of that
-kind*, the missing ones are unpublished drafts. Test by checking whether the returned set is
-exactly the published set.
+**Cause: publication state.** The design-system setup flow has a **"Published" toggle** `[docs]`,
+and `list_design_systems` appears to enumerate **published** systems — unpublished ones are
+created as design systems and simply do not appear.
 
-If that holds, the modelling consequence is real: **"design system" is a role a project plays, not
-a type it has.** A project can be a design system and not appear in the design-systems list. Any
-code branching on kind needs to say *which* sense it means.
+Evidence strength: **observational, not causal.** Confirmed by comparing existing projects against
+their publish state (2026-07-19), not by toggling one and watching it appear. Strong enough to act
+on, not strong enough to call `[env]`-settled. The clean test remains: flip Published on a missing
+one and re-run.
+
+**The tool is not broken — it answers a different question than its name suggests.** "Which design
+systems are published?" is genuinely useful; it just is not "which projects are design systems?"
+Use it for publication state and nothing else.
+
+Modelling consequence, and it is real: **"design system" is a role a project plays, not a type it
+has.** A project can be a design system and be absent from the design-systems list. Any code
+branching on kind must say *which* sense it means — created-as, or published-as.
+
+Consequence for `ds-sync`: it mirrors `Library of Light — Design System`. Publication state
+determines whether that is the live org-wide system or a draft, which is worth surfacing in a sync
+report — mirroring a draft and mirroring the published system are different operations with the
+same file list.
 
 ### Establishing a project's kind — what to actually do
 
