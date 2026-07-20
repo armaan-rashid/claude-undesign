@@ -55,6 +55,20 @@ codegen fallback to React source is a logged spec gap that comes back to this sk
    colour and why it changed from the last one. **Read it before naming anything**, and cite it in
    `$description` when it explains a choice.
 
+5. **`<Name>.d.ts` and `<Name>.prompt.md`, if the export carries them.** These are *authored*
+   artifacts uploaded by `/design-sync`, not generated ones `[env]`:
+
+   - **`.d.ts` is the real API contract** the design agent codes against. It beats anything you
+     infer from source, and it beats the bundle absolutely — `_ds_bundle.js` is compiled `dist/`.
+     Use it as the primary source for `props`, types, and defaults.
+   - **`.prompt.md` is composition guidance** — how the component is meant to be used, written for
+     a consuming agent. Prime input for `anatomy` and `behavior_contract`, and a second intent
+     source alongside the design chat.
+
+   An export containing `_ds/` is downstream of a **real component library** in some repo. If that
+   library is reachable, prefer its source over reverse-engineering the bundle. See
+   `ds-contract-excavation/references/known-scaffolds.md`.
+
 ## Outputs
 
 ```

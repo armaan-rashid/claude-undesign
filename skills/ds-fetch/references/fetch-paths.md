@@ -375,12 +375,53 @@ Settled `[env]`, 2026-07-19, by running them in **both** Cowork and Claude Code:
 So `/design` itself offers **no fetch route** — consent is auth and only auth. Whether the
 hyphenated Claude Code commands offer one is **unknown**; see below.
 
-### Untested, and one of them is a hazard
+### `/design-sync` — CONFIRMED WRITE. NEVER CALL IT.
 
-`/design-sync` is documented as **bidirectional** — pull a design system in, *or push code changes
-back to Claude Design*. This pipeline is read-only in every skill. **Do not invoke `/design-sync`
-until its direction is established**; a command that silently pushes would violate the core policy
-with no error to notice.
+Settled `[env]` 2026-07-19. It is **not** a way to pull anything down. It goes **code → Claude
+Design**: takes a design-system repo on your machine, converts it to the format claude.ai/design
+consumes, and **uploads it into a Claude Design project**, so the design agent builds with your
+real components instead of generic ones.
+
+It is the **opposite direction** from this entire pipeline. Earlier notes here called it
+"bidirectional" on the strength of a doc summary; the operative direction is push.
+
+Why it is worse than a no-op if called by mistake:
+
+- **Creates a new Claude Design project.** It refuses to pour a first import into an existing one,
+  so a stray invocation leaves a project behind.
+- **Writes and commits into your repo**: `.design-sync/config.json`, `NOTES.md`, `conventions.md`.
+- **Costs up to hours and a significant number of tokens** on a large repo. It installs
+  dependencies, builds, and visually verifies every component preview.
+
+It does ask for confirmation before starting and takes one upfront upload approval — so the damage
+is gated, not silent. Still: **no skill in this pipeline invokes it, ever.**
+
+Two repo shapes it detects: **storybook** (has `.storybook/`; previews verified against your own
+Storybook renders) and **package** (no Storybook; previews authored from usage examples and graded
+on a rubric).
+
+### What it uploads — and why that matters here
+
+| Artifact | Consumer |
+|---|---|
+| `_ds_bundle.js` + `_vendor/` | the design agent's runtime — your real compiled `dist/`, not a reimplementation |
+| `styles.css`, `tokens/`, `fonts/` | the look; everything must be reachable from `styles.css`'s `@import` closure |
+| `<Name>.d.ts` | the API contract the agent codes against |
+| `<Name>.prompt.md` | usage reference — how to compose the component |
+| `<Name>.html` preview cards | humans, in the component picker |
+| `_ds_sync.json` | future syncs — content hashes so a re-sync skips unchanged components |
+
+**This is the origin of the structures `ds-contract-excavation` catalogues.** CD-4's `_ds/` folder
+and CD-5's window-global component kit are not mysterious generator output — they are the
+*downstream shape of a `/design-sync` upload*. See `ds-contract-excavation/references/known-scaffolds.md`.
+
+Two consequences for extraction:
+
+- **`<Name>.d.ts` is a real API contract**, uploaded deliberately. `ds-sync` Phase 3 already reads
+  `.d.ts` alongside component sources; that is now confirmed to be a first-class artifact rather
+  than an incidental file.
+- **`<Name>.prompt.md` is an intent source** — composition guidance written for a consuming agent.
+  Add it to `ds-spec-extract`'s intent inputs alongside `get_conversation`.
 
 ### `/design-login` — a second, separately-scoped auth `[env]`
 
