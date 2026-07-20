@@ -74,24 +74,50 @@ A mirror without hashes forces every caller to re-walk the tree.
 **Verify the command surface in the environment before relying on it. The published docs are
 stale here, and have already sent this skill down a wrong path once.**
 
-### The command surface differs by client
+### The command surface
 
-**`/design-sync` and `/design-login` exist in Claude Code. They do not exist in Cowork.** Same
-feature, different surface per client — which means "does this command exist?" has no
-environment-independent answer.
+Two separate things, and conflating them caused three wrong conclusions:
 
-**In Cowork** `[env]` 2026-07-19 — autocomplete offers
-`/design [sync|login|import|export|status|<prompt>]`, and five of six are inert:
+**1. `/design` — same in both clients** `[env]` 2026-07-19
 
-| Command | Behavior in Cowork |
+Autocomplete advertises `/design [sync|login|import|export|status|<prompt>]`. **Only `consent` and
+`revoke` work, and neither is advertised.** Everything else — including a free-form prompt the hint
+claims to accept — prints `Usage: /design consent | /design revoke`.
+
+Verified in **both Cowork and Claude Code**. This is not a client difference; the autocomplete hint
+is simply wrong everywhere.
+
+| `/design` subcommand | Behavior, both clients |
 |---|---|
-| `/design consent` | **Works.** Grants access. Not in autocomplete. |
-| `/design revoke` | **Works.** Withdraws access. Not in autocomplete either. |
-| `/design status` · `import` · `export` · `sync` · `login` · any prompt | All print `Usage: /design consent \| /design revoke` |
-| `/design-login`, `/design-sync` | Not available in this environment |
+| `consent` | **Works.** Grants access. Not advertised. |
+| `revoke` | **Works.** Withdraws access. Not advertised. |
+| `sync` · `login` · `import` · `export` · `status` · any prompt | `Usage: /design consent \| /design revoke` |
 
-**In Claude Code** — `/design-sync` and `/design-login` exist, as the support docs describe.
-Behavior not yet catalogued here; see `references/fetch-paths.md`.
+**2. Hyphenated commands — Claude Code only**
+
+`/design-sync` and `/design-login` are **separate top-level commands**, not `/design` subcommands.
+They exist in Claude Code; in Cowork they return "isn't available in this environment." The support
+docs describe them accurately.
+
+- **`/design-login`** `[env]` — browser sign-in flow, then prints "Design-system access
+  authorized." A **second auth scope**, distinct from `/design consent`. Whether the MCP tools
+  benefit from it, or only `/design-sync` does, is untested.
+- **`/design-sync`** — **do not invoke yet.** Documented as *bidirectional*: it can push code
+  changes back to Claude Design. Every skill here is read-only. Establish its direction before any
+  skill calls it; a silent push would violate the core policy with no error to notice.
+
+### Auth — two scopes, run both
+
+```sh
+claude mcp add --scope user --transport http claude-design https://api.anthropic.com/v1/design/mcp
+```
+
+then `/design consent` (MCP tools), then `/design-login` (design-system access), then **restart
+Claude Code**.
+
+Running both is currently the safe default: `/design consent` is confirmed to enable the MCP
+tools, and `/design-login` may widen what those tools can see — that is an open question, not a
+settled one. Cheap to run; potentially load-bearing.
 
 ### What the confusion actually taught
 
@@ -104,18 +130,24 @@ environment where they were tested*:
    that work.
 3. The server's tool annotations mark `list_files` both `read-only` and `destructive`, and
    `finalize_plan` as neither.
-4. **This skill** previously asserted `/design-login` "does not exist," generalizing from Cowork to
-   everywhere. The docs were right; the test was run in the wrong client.
+4. **This skill** asserted `/design-login` "does not exist," generalizing from one client to
+   everywhere. The docs were right; the test ran in the wrong client.
+5. **Then it over-corrected**, assuming the whole `/design` surface differed by client. It does
+   not — the inert subcommands are inert everywhere. Only the hyphenated commands differ.
 
-Two rules, and the second was learned the hard way:
+Three rules, the last two learned the hard way:
 
 - **An advertised surface is a claim, not evidence.** Docs, skill files, and autocomplete hints are
   leads. Running the thing is evidence.
 - **A negative result is scoped to where you ran it.** "Command X does not exist" is only ever
-  "does not exist *in client Y*." Record the client with every observation — an unscoped negative
-  is how correct documentation gets overwritten with a local quirk.
+  "does not exist *in client Y*." An unscoped negative is how correct documentation gets
+  overwritten with a local quirk.
+- **Scope is measured, not assumed — in both directions.** On learning one command was
+  client-specific, this skill assumed they all were. Wrong the other way. Finding that A differs
+  by client says nothing about B; test B.
 
-Re-verify by running commands, and write down **which client** you ran them in.
+Re-verify by running commands, and write down **which client** and **which exact command form** —
+`/design sync` and `/design-sync` are different commands with different availability.
 
 Note also that the docs were **right** about the MCP endpoint (Step 1) while wrong about
 `/design-login`. The rule is *verify*, not *distrust documentation categorically* — blanket

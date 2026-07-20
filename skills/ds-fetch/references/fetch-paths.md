@@ -265,14 +265,18 @@ must come from hashing, and the "cheap no-op" premise for nightly runs needs ret
 So `list_projects` minus `list_design_systems` does **not** yield "app/site projects," and this
 file previously recommended exactly that. Withdrawn.
 
-**Cause: publication state.** The design-system setup flow has a **"Published" toggle** `[docs]`,
-and `list_design_systems` appears to enumerate **published** systems — unpublished ones are
-created as design systems and simply do not appear.
+**Candidate cause 1 — publication state.** The design-system setup flow has a **"Published"
+toggle** `[docs]`, and `list_design_systems` may enumerate only **published** systems.
 
-Evidence strength: **observational, not causal.** Confirmed by comparing existing projects against
-their publish state (2026-07-19), not by toggling one and watching it appear. Strong enough to act
-on, not strong enough to call `[env]`-settled. The clean test remains: flip Published on a missing
-one and re-run.
+Evidence: **correlational only.** Supported by comparing existing projects against their publish
+state (2026-07-19); never tested by toggling one and watching it appear.
+
+**Candidate cause 2 — authorization scope.** Every observation above predates `/design-login`
+("Design-system access authorized"). The omissions may have been an auth-scope artifact that no
+longer applies. **Re-run `list_design_systems` post-login before accepting cause 1** — see the
+auth section below.
+
+Do not act on either until they are separated. They fit the same evidence.
 
 **The tool is not broken — it answers a different question than its name suggests.** "Which design
 systems are published?" is genuinely useful; it just is not "which projects are design systems?"
@@ -357,15 +361,64 @@ it keeps the skill useful when Claude Design is unreachable or the export predat
 
 ## The `/design` command surface
 
-Settled `[env]`, 2026-07-19, by running every one of them:
+Settled `[env]`, 2026-07-19, by running them in **both** Cowork and Claude Code:
 
-- **`/design consent`** and **`/design revoke`** work. Neither appears in autocomplete.
+- **`/design consent`** and **`/design revoke`** work, in both clients. Neither is advertised in
+  autocomplete.
 - **`/design status`, `import`, `export`, `sync`, `login`, and any free-form prompt** all return
-  `Usage: /design consent | /design revoke`. They are advertised and inert.
-- **No hyphenated form exists** — `/design-login`, `/design-sync` and friends are documentation
-  artifacts, not commands.
+  `Usage: /design consent | /design revoke` — in **both** clients. Advertised and inert everywhere;
+  this is not a client difference.
+- **`/design-sync` and `/design-login` are separate top-level commands**, not `/design`
+  subcommands. They exist in **Claude Code only**; Cowork reports them unavailable. The support
+  docs describe them accurately.
 
-So there is **no slash-command route to fetching anything.** Consent is auth, and auth only.
+So `/design` itself offers **no fetch route** — consent is auth and only auth. Whether the
+hyphenated Claude Code commands offer one is **unknown**; see below.
+
+### Untested, and one of them is a hazard
+
+`/design-sync` is documented as **bidirectional** — pull a design system in, *or push code changes
+back to Claude Design*. This pipeline is read-only in every skill. **Do not invoke `/design-sync`
+until its direction is established**; a command that silently pushes would violate the core policy
+with no error to notice.
+
+### `/design-login` — a second, separately-scoped auth `[env]`
+
+Run in Claude Code: opens a browser window for sign-in and permission grant, then prints
+**"Design-system access authorized."**
+
+Note the wording — *design-system* access, not design access. Combined with `/design consent`
+existing separately, the likely model is **two auth scopes**:
+
+| Command | Grants | Confidence |
+|---|---|---|
+| `/design consent` | The `claude-design` MCP server's tools | `[env]` — tools worked after `mcp add` + consent + restart |
+| `/design-login` | "Design-system access" — probably what `/design-sync` needs | `[env]` for the message; **purpose inferred** |
+
+They are **not** the same mechanism under two names. Whether the MCP tools need `/design-login`
+too, or only `/design-sync` does, is untested.
+
+### This may falsify the "published only" explanation
+
+`list_design_systems` was observed omitting projects created as design systems, and the
+publication-toggle hypothesis was confirmed **anecdotally** — by comparing existing projects, not
+by toggling one.
+
+**But that observation predates `/design-login`.** If the omissions were an *authorization scope*
+problem rather than a publication-state problem, the missing systems should now appear.
+
+**Test before trusting either explanation: re-run `list_design_systems` now that design-system
+access is authorized.**
+
+- **More systems returned** → it was auth scope. The publication hypothesis was a coincidence that
+  survived because the check was correlational, and `/design-login` belongs in `ds-fetch` Step 0 as
+  a required step.
+- **Same set returned** → publication state stands, and `/design-login` is scoped to `/design-sync`
+  alone.
+
+This is the clearest illustration in this file of why correlational confirmation is weak: two
+different causes fit the same observation, and the one nobody had thought of yet was introduced by
+a command run an hour later.
 
 The open hypothesis (see `ds-fetch` Step 1): consent may authorize the **MCP server**, exposing
 design access as MCP *tools* rather than commands. That would explain both the inert subcommands
