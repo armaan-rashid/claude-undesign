@@ -73,35 +73,85 @@ Each skill's `references/` ships automatically with it; no registration needed i
 
 ## Install
 
-### For another Cowork or Claude Code session (recommended)
+Three routes. Pick by how much you care about updates propagating without anyone doing anything.
 
-Push this repo to GitHub, then in the other session:
+| Route | Updates on push? | Works in |
+|---|---|---|
+| A. Claude Code plugin + `autoUpdate` | Yes, next session | Claude Code |
+| B. Cowork org marketplace + GitHub sync | Yes, on PR merge | Cowork, **Team/Enterprise only** |
+| C. Skills committed to `.claude/skills/` | Yes, **mid-session** | Both |
+
+### A — Claude Code plugin, auto-updating
+
+Copy [`templates/claude-settings.json`](./templates/claude-settings.json) to the *consuming* repo's
+`.claude/settings.json`, set `OWNER/REPO`, and commit. Anyone who clones and trusts the folder is
+prompted to install; they are never auto-installed without consent.
+
+**`autoUpdate` must be explicit** — third-party marketplaces default to disabled. With it on,
+Claude Code checks after session start (random delay up to ~10 min) and applies **on the next
+session**; plugin skills load at session start only. `/reload-plugins` applies them sooner.
+
+Manual equivalent, per person:
 
 ```
-/plugin marketplace add <your-github-user>/<repo-name>
+/plugin marketplace add OWNER/REPO
 /plugin install design-port-pipeline@design-port
+/plugin marketplace update          # to refresh later
 ```
 
-All five skills load together. To pick up later changes: `/plugin marketplace update`.
+### B — Cowork organization marketplace
 
-### From a local path
+**Team/Enterprise plan owners only.** On Pro/Max there is no auto-sync; manual update is the
+ceiling.
 
-```
-/plugin marketplace add "/Users/Armaan/Desktop/claude undesign"
-/plugin install design-port-pipeline@design-port
-```
+Organization settings → Plugins → Add plugin → GitHub → `owner/repo`. Then open the marketplace's
+menu and toggle **Sync automatically** — it re-syncs whenever a PR merges. Installation preference
+can be set to *Installed by default* or *Required* so members get it with no action.
 
-Local-path marketplaces have a known issue where the plugin registers but loads **0 skills**
-([#54967](https://github.com/anthropics/claude-code/issues/54967)). If that happens, symlink the
-directory into `~/.claude/plugins/marketplaces/` before running `marketplace add`, which keeps the
-relative `source: "./"` resolvable. Pushing to GitHub avoids this entirely.
+**The repo must be private or internal.** Public repos are not permitted for org marketplaces, and
+must be on github.com (no GitHub Enterprise Server). The Claude GitHub App has to be installed on
+the repo. Note this conflicts with route A, where public is fine — if you need both, private plus
+granting collaborators access covers it.
+
+Only relative `source` paths (`"./"`, `"./plugins/x"`) are fully supported; `github`, `url`, and
+`git-subdir` sources work only against public targets, and `npm`/`pip` are unsupported. This repo
+uses `"source": "./"`, so it is fine.
+
+A failed sync can temporarily remove plugins from members. If that happens, fix, push, re-sync, and
+**re-check installation preferences** — they can reset.
+
+### C — Skills committed to `.claude/skills/` (the only live one)
+
+Skills in `.claude/skills/` are **live-watched**: adding, editing, or removing one takes effect
+inside a running session, no restart. Plugin skills are not. So if you want `git pull` to update an
+in-flight session, copy `skills/*` into the consuming repo's `.claude/skills/` and commit them.
+
+Trade-off: you are syncing copies rather than referencing one source, so they drift unless a
+subtree/submodule/CI step keeps them current — and submodule behavior under `.claude/skills/` is
+undocumented.
 
 ### Single skill, no plugin
 
-To use one skill in a target repo without installing the plugin, symlink it into `.claude/skills/`:
-
 ```sh
 ln -s "$PWD/skills/ds-contract-excavation" /path/to/repo/.claude/skills/
+```
+
+Symlink handling under `.claude/skills/` is undocumented (the documented rules cover plugins).
+Works locally; verify before depending on it.
+
+### Local-path marketplace
+
+Known issue: registers but loads **0 skills**
+([#54967](https://github.com/anthropics/claude-code/issues/54967)). Symlink into
+`~/.claude/plugins/marketplaces/` first, or just use a GitHub route.
+
+### `.skill` bundles
+
+`dist/*.skill` are zipped skill directories with their `references/` intact — the plain "save
+skill" button takes only `SKILL.md` and silently drops the bundled files. Rebuild after any change:
+
+```sh
+for d in skills/*/; do (cd skills && zip -rq "../dist/$(basename $d).skill" "$(basename $d)"); done
 ```
 
 ### Validating before publishing

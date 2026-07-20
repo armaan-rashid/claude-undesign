@@ -1,0 +1,18 @@
+{
+  "_comment": "TEMPLATE — copy to <consuming-repo>/.claude/settings.json and replace OWNER/REPO. Delete these _comment keys. Committing this means anyone who clones and trusts the folder is prompted to install the marketplace and plugin. It does NOT auto-install without consent.",
+
+  "extraKnownMarketplaces": {
+    "design-port": {
+      "source": {
+        "type": "github",
+        "repo": "OWNER/REPO"
+      },
+      "_comment_autoUpdate": "Third-party marketplaces default to autoUpdate DISABLED. This must be explicit. Claude Code then checks after session start (random delay up to ~10 min) and applies on the NEXT session — plugin skills load at session start only.",
+      "autoUpdate": true
+    }
+  },
+
+  "enabledPlugins": {
+    "design-port-pipeline@design-port": true
+  }
+}
