@@ -151,7 +151,16 @@ Known issue: registers but loads **0 skills**
 skill" button takes only `SKILL.md` and silently drops the bundled files. Rebuild after any change:
 
 ```sh
-for d in skills/*/; do (cd skills && zip -rq "../dist/$(basename $d).skill" "$(basename $d)"); done
+for d in skills/*/; do n=$(basename "$d"); \
+  (cd skills && zip -rq "../dist/$n.skill" "$n" -x '*.DS_Store'); done
+```
+
+The `-x '*.DS_Store'` is not optional on macOS — without it Finder metadata ships inside the
+bundle. (Verified: a bare `zip -r` picks it up.) Directory entries also get included; harmless,
+but it means archive listings differ from a scripted build. Confirm a rebuild with:
+
+```sh
+python3 -c "import zipfile,glob;[print(f, zipfile.ZipFile(f).namelist()) for f in sorted(glob.glob('dist/*.skill'))]"
 ```
 
 ### Validating before publishing
