@@ -4,17 +4,36 @@ Which Figma MCP tool populates which spec artifact, and how far each claim is ve
 
 **Provenance tags** (same discipline as the `ds-fetch` catalog):
 
-- `[env]` — the tool **name and parameters** are confirmed present in the connected Figma MCP
-  (they are in the loaded tool list, 2026-07-19).
-- `[figma-doc]` — the **return shape** described here comes from the tool's own description, **not**
-  from a run against a real file. Inspect the actual return on first use and correct this file.
+- `[env]` — confirmed against a **real file**, run 2026-07-19 (fileKey `of6sR4JjlHzTFp5m0op6N2`,
+  node `177:61`). Return shape observed, not assumed.
+- `[figma-doc]` — return shape from the tool's own description, **not** yet run. Inspect on first
+  use and promote.
 
 Server prefix is `mcp__b78f5274-7ace-4f4b-a579-25b35966e81c__` (a session-specific id — confirm
 yours; do not hardcode it into committed code). Tools referred to below by short name.
 
-**The standing rule:** tool names are solid, return shapes are not. The whole `ds-fetch` saga was
-about exactly this gap. Do not assume a field exists because it is drawn below — probe, then fix
-this file.
+**The standing rule:** tool names are solid, return shapes are not. The first real run already
+overturned two assumptions (Code Connect is plan-gated; a raster node yields nothing) — see the
+findings box below. Probe, then fix this file.
+
+## First-run findings (2026-07-19) — read these before trusting the happy path
+
+1. **A raster / flattened node yields nothing extractable.** The test node was a single 4096×2304
+   image ("Ticket"). `get_variable_defs` → `{}`, `get_metadata` → one `<rounded-rectangle>`,
+   `get_design_context` → a lone `<img>` with an asset URL. No tokens, no structure, no variants.
+   **The extractor must detect this and stop** (Step 1 of the SKILL). Not every Figma URL points at
+   native design data; imported/flattened art is common and produces a confidently empty spec if you
+   do not guard for it.
+
+2. **Code Connect is plan-gated.** `get_code_connect_map` returned: *"You need a Dev or Full seat on
+   an Organization or Enterprise plan."* A Full seat on a **team/student** plan is not enough. So the
+   "Code Connect is the highest-value binding" claim holds **only when the plan allows it** — for
+   many users these tools error. Treat Code Connect as a bonus with a fallback, never a requirement.
+   `list_file_components_for_code_connect` and `get_context_for_code_connect` are almost certainly
+   gated the same way (unconfirmed — same subsystem).
+
+3. **`get_variable_defs` empty ≠ "design has no tokens."** Confirmed the per-node warning with a real
+   `{}`. This node simply binds no variables. Query native component nodes, and union across them.
 
 ---
 
@@ -30,18 +49,18 @@ Load it once at the start of extraction; it governs every `get_design_context` c
 
 ## Tool → artifact table
 
-| Figma MCP tool | Params `[env]` | Populates | Return shape |
+| Figma MCP tool | Params | Populates | Return shape |
 |---|---|---|---|
-| `get_metadata` | `fileKey`, optional `nodeId` | node selection, `layout.md` structure | XML of ids/types/names/positions/sizes `[figma-doc]` |
-| `get_variable_defs` | `nodeId`, `fileKey` | **`tokens.json`** | flat map `{"path/name": value}`, e.g. `{"icon/default/secondary": "#949494"}` `[figma-doc]` |
-| `get_design_context` | `nodeId`, `fileKey` | component structure + hints | React+Tailwind reference code, screenshot, hint bundle `[figma-doc]` |
-| `get_code_connect_map` | `nodeId`, `fileKey` | `behavior_contract` bindings | `{nodeId: {codeConnectSrc, codeConnectName}}` `[figma-doc]` |
-| `list_file_components_for_code_connect` | `fileKey` | component inventory + deps | flat per-component graph with variants `[figma-doc]` |
-| `get_context_for_code_connect` | `nodeId`, `fileKey` | one component's variant/prop tree | properties, variant options, descendant tree `[figma-doc]` |
-| `get_screenshot` | `nodeId`, `fileKey`, `maxDimension` | `verify.yaml` anchors | PNG via short-lived URL (**~7-day expiry**) `[figma-doc]` |
-| `get_motion_context` | `nodeId`, `fileKey` | (defer to `figma-implement-motion`) | keyframes, easing, CSS/motion snippets `[figma-doc]` |
-| `get_libraries` | `fileKey` | token/component completeness | subscribed + available libraries with keys `[figma-doc]` |
-| `whoami` | — | auth/permission debug | handle, email, plans `[figma-doc]` |
+| `get_metadata` | `fileKey`, optional `nodeId` | node selection, `layout.md` structure | `[env]` "Currently selected nodes:" preamble, then XML elements (`<rounded-rectangle id name x y width height />`), then a "you MUST call get_design_context" nudge. Flat for a leaf node. |
+| `get_variable_defs` | `nodeId`, `fileKey` | **`tokens.json`** | `[env]` flat JSON map `{"path/name": value}`. **Returned `{}` for a node with no bound variables.** |
+| `get_design_context` | `nodeId`, `fileKey` | component structure + hints | `[env]` a TS module string (React component, Tailwind classes, asset URLs as `const`s, `data-node-id` attrs) + instruction blocks (convert-to-target-stack, node-ids, 7-day asset URLs) + an inline screenshot. |
+| `get_code_connect_map` | `nodeId`, `fileKey` | `behavior_contract` bindings | `[env]` **plan-gated** — errors without a Dev/Full seat on Org/Enterprise. When allowed: `{nodeId: {codeConnectSrc, codeConnectName}}` `[figma-doc]`. |
+| `list_file_components_for_code_connect` | `fileKey` | component inventory + deps | `[figma-doc]` flat per-component graph with variants. Likely plan-gated (Code Connect subsystem). |
+| `get_context_for_code_connect` | `nodeId`, `fileKey` | one component's variant/prop tree | `[figma-doc]` properties, variant options, descendant tree. Likely plan-gated. |
+| `get_screenshot` | `nodeId`, `fileKey`, `maxDimension` | `verify.yaml` anchors | `[env]` JSON `{image_url, width, height, format, original_width, original_height}` — a **short-lived URL (~7-day), not inline** unless `enableBase64Response:true`. |
+| `get_motion_context` | `nodeId`, `fileKey` | (defer to `figma-implement-motion`) | `[figma-doc]` keyframes, easing, CSS/motion snippets |
+| `get_libraries` | `fileKey` | token/component completeness | `[figma-doc]` subscribed + available libraries with keys |
+| `whoami` | — | auth/permission debug | `[env]` `{handle, email, plans:[{name, seat, tier, key}]}` |
 
 ---
 

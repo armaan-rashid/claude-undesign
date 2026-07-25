@@ -29,7 +29,7 @@ framework cheap — add one codegen skill, reuse extract + verify.
 |---|---|---|
 | source (Claude Design) | `ds-fetch` | route confirmed `[env]`; mirror still unrun |
 | source (Claude Design) | `ds-sync` | one real run (repo-side); transport unrun |
-| source (Figma) | `ds-figma-extract` | drafted, unrun — tool names `[env]`, returns `[figma-doc]` |
+| source (Figma) | `ds-figma-extract` | MCP run once `[env]`; returns confirmed, variants path still unrun |
 | excavate | `ds-contract-excavation` | drafted, one real run |
 | extract | `ds-spec-extract` | drafted |
 | codegen | `ds-leptos-codegen` | drafted |
@@ -42,9 +42,13 @@ consume it unchanged. See `feedback/` for run notes.
 **Figma branch — orchestrates, does not reinvent.** The Figma MCP ships its own design-to-code
 skills (`figma-design-to-code` is a mandatory prerequisite before `get_design_context`;
 `figma-code-connect`, `figma-swiftui`, `figma-implement-motion` exist too). `ds-figma-extract` loads
-and builds on them, adding only the spec layer they skip. Figma tool *names* are confirmed present;
-tool *return shapes* are documented-only (`[figma-doc]`) until run against a real file — same
-verify-don't-assume discipline as the Claude Design branch.
+and builds on them, adding only the spec layer they skip.
+
+The first real MCP run (2026-07-19, notes in `feedback/`) already overturned two doc-based
+assumptions: **Code Connect is plan-gated** (needs a Dev/Full seat on Org/Enterprise — a
+team/student seat errors), and a **raster/flattened node yields nothing extractable** (empty
+variables, a lone `<img>`) — now a hard guardrail in the skill's Step 1. Return shapes are confirmed
+`[env]` in `figma-mcp-map.md`; the variants→statechart path is the next probe.
 
 **Step 0 is automatable.** The Claude Design MCP server (`claude-design`, 22 tools) reaches both
 design systems and app/site projects — confirmed 2026-07-19. Setup has three separate failure

@@ -92,11 +92,24 @@ spec/
   FIGMA-GAPS.md        # what Figma could not tell us (see Step 5)
 ```
 
-## Step 1 — Orient without spending the whole file
+## Step 1 — Orient, and check the node is actually extractable
 
 `get_metadata` on the target node returns structure (ids, types, names, sizes) cheaply. Use it to
-pick the real component nodes before pulling full context. Do **not** `get_design_context` the
-whole file blind — it is the expensive call.
+pick the real component nodes before pulling full context. Do **not** `get_design_context` the whole
+file blind — it is the expensive call.
+
+**Guardrail — detect a raster / flattened node and stop.** Confirmed on the first real run
+(2026-07-19): a node that is imported art or a flattened image has no design data to extract, and
+the tools return emptiness that looks like success:
+
+- `get_metadata` → a single leaf (`<rounded-rectangle>`, `<vector>`, an image fill), no child tree.
+- `get_variable_defs` → `{}`.
+- `get_design_context` → a lone `<img>` with an asset URL and nothing else.
+
+If you see this triad, **the node is not native Figma layers — stop and tell the user.** Ask them to
+point at a real frame or component (or a parent that contains layered structure). Producing a spec
+from a flattened image yields one confidently-empty component and zero tokens — worse than an honest
+"nothing here." Do not proceed to Steps 2–5 on a raster node.
 
 ## Step 2 — Tokens (do this first; it is the strongest artifact)
 
@@ -119,9 +132,13 @@ For each component node, per `references/figma-mcp-map.md`:
 
 - `get_design_context` (with the mandatory skill loaded) → reference structure and the hint
   bundle. Use hints by the skill's priority: Code Connect > docs > annotations > tokens > raw.
-- `get_code_connect_map` / `list_file_components_for_code_connect` → existing code components.
-  **A Code Connect mapping is a binding, not a suggestion**: record it in `behavior_contract` so
-  codegen reuses the real component instead of regenerating it.
+- **Code Connect, when the plan allows it.** `get_code_connect_map` /
+  `list_file_components_for_code_connect` map Figma components to real code components — when it
+  works, a mapping is a **binding, not a suggestion**: record it in `behavior_contract` so codegen
+  reuses the real component. **But it is plan-gated** (confirmed 2026-07-19: needs a Dev/Full seat on
+  an Org/Enterprise plan; a team/student Full seat errors). Treat it as a bonus: try it, and on a
+  plan error fall back to the design-context hints and the target repo's own components — do not
+  block extraction on it.
 - Figma **variant properties** map to spec `variants` and, where they name interaction/availability
   dimensions (hover, pressed, disabled), to `states.machine` parallel regions.
 
