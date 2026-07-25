@@ -1,28 +1,50 @@
 # Design Port Pipeline
 
-Claude Code skills that port a Claude Design export (React) to another framework — first target
-**Leptos (Rust)** — via an explicit intermediate spec rather than direct code translation.
+Claude Code skills that port a UI design to a target framework via an explicit intermediate spec
+rather than direct code translation. The durable interchange is the spec (DTCG tokens + component
+specs + statecharts); sources and targets plug into it.
 
 Design doc: [`design-port-pipeline-skills.md`](./design-port-pipeline-skills.md).
 
-Pipeline: `fetch → excavate → extract → codegen → verify`, orchestrated across git worktrees.
+Pipeline shape — **two source branches feed one spec feed many targets:**
 
-Two skills share the fetch: `ds-fetch` mirrors and hashes, `ds-sync` diffs the result and runs
-its lanes. Transport-level knowledge (the `get_file` cap, bare-directory filtering, skip rules,
-subagent delegation) lives in `ds-fetch` only.
+```
+  SOURCES                     SPEC                  TARGETS
+  Claude Design ─ ds-fetch ─┐
+                            ├─ ds-contract-excavation → ds-spec-extract ─┐
+  (code export)  ───────────┘                                           │
+                                                          spec/  ────────┼─ ds-leptos-codegen  → Leptos
+  Figma ──────── ds-figma-extract ──────────────────────────────────────┤─ ds-nextjs-codegen  → Next.js
+                                                                         └─ (ds-swiftui, … )
+                                                                            ↓
+                                                                     ds-visual-verify
+```
+
+The spec never changes; only the source adapter and the codegen target do. That is what makes a new
+framework cheap — add one codegen skill, reuse extract + verify.
 
 ## Status
 
-| # | Skill | State |
+| Stage | Skill | State |
 |---|---|---|
-| 0 | `ds-fetch` | route confirmed `[env]`; mirror still unrun |
-| 1 | `ds-contract-excavation` | drafted, one real run |
-| 2 | `ds-spec-extract` | drafted |
-| 3 | `ds-leptos-codegen` | drafted |
-| 4 | `ds-visual-verify` | drafted |
-| — | `ds-sync` | drafted, one real run; Phase 1 delegates to `ds-fetch` |
+| source (Claude Design) | `ds-fetch` | route confirmed `[env]`; mirror still unrun |
+| source (Claude Design) | `ds-sync` | one real run (repo-side); transport unrun |
+| source (Figma) | `ds-figma-extract` | drafted, unrun — tool names `[env]`, returns `[figma-doc]` |
+| excavate | `ds-contract-excavation` | drafted, one real run |
+| extract | `ds-spec-extract` | drafted |
+| codegen | `ds-leptos-codegen` | drafted |
+| codegen | `ds-nextjs-codegen` | drafted, unrun |
+| verify | `ds-visual-verify` | drafted |
 
-Skills 1–2 are useful standalone before codegen exists. See `feedback/` for run notes.
+`ds-figma-extract` produces the **same `spec/`** as `ds-spec-extract`, so both codegen targets
+consume it unchanged. See `feedback/` for run notes.
+
+**Figma branch — orchestrates, does not reinvent.** The Figma MCP ships its own design-to-code
+skills (`figma-design-to-code` is a mandatory prerequisite before `get_design_context`;
+`figma-code-connect`, `figma-swiftui`, `figma-implement-motion` exist too). `ds-figma-extract` loads
+and builds on them, adding only the spec layer they skip. Figma tool *names* are confirmed present;
+tool *return shapes* are documented-only (`[figma-doc]`) until run against a real file — same
+verify-don't-assume discipline as the Claude Design branch.
 
 **Step 0 is automatable.** The Claude Design MCP server (`claude-design`, 22 tools) reaches both
 design systems and app/site projects — confirmed 2026-07-19. Setup has three separate failure
@@ -56,16 +78,24 @@ skills/
     references/spec-schema.md          # component spec schema (volatile layer)
     references/statechart-subset.md    # XState-compatible subset for states.machine
     references/tokens.md               # DTCG three-tier rules + Tailwind @theme mapping
+  ds-figma-extract/
+    SKILL.md
+    references/figma-mcp-map.md         # Figma MCP tool → spec artifact; reuses ds-spec-extract's format refs
   ds-leptos-codegen/
     SKILL.md
     references/react-to-leptos.md
     references/project-conventions.md
+  ds-nextjs-codegen/
+    SKILL.md
+    references/react-to-nextjs.md       # RSC boundary traps, Tailwind v4, assets/fonts
+    references/project-conventions.md   # App Router / RSC / Tailwind v4 seed
   ds-visual-verify/
     SKILL.md
     references/harness-recipes.md
   ds-sync/
     SKILL.md
 feedback/                              # run notes, not shipped as skill content
+templates/                             # .claude/settings.json template for distribution
 ```
 
 `skills/`, `commands/`, `agents/` must sit at plugin root — **not** inside `.claude-plugin/`.
