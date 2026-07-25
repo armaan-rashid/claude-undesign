@@ -14,11 +14,16 @@ The swappable codegen stage, React target. Same shape as `ds-leptos-codegen`: re
 this framework's rules, emit components plus a preview surface for `ds-visual-verify`. The spec
 format never changes; only this skill does.
 
-**This target is unusual: source and target are the same paradigm.** Figma's `figma-design-to-code`
-emits React+Tailwind, and the spec's `theme.css` already *is* a Tailwind theme. So unlike the Leptos
-port — which translated reactivity semantics — the hard work here is **not** translation. It is
-three things: getting the **App Router / Server-vs-Client boundary** right, binding to the project's
-**real Tailwind theme and existing components**, and not shipping the reference code verbatim.
+**Source and target share a paradigm — which makes the real work easy to miss.** Figma's
+`figma-design-to-code` emits React+Tailwind and the spec's `theme.css` already *is* a Tailwind theme,
+so it is tempting to think this is a copy job. It is not. Four things carry the weight:
+
+1. **De-absoluting the layout.** Verified on a real file: the reference is *entirely* absolutely
+   positioned with percentage insets. Converting that to flow layout is this target's equivalent of
+   translating reactivity semantics — the biggest single task (Step 3).
+2. **The App Router Server/Client boundary** (Step 1).
+3. **Binding the theme and reusing existing components** instead of shipping literals (Step 4).
+4. **Not pasting the reference verbatim.** It is a starting point, by its own instructions.
 
 > **Runs in Claude Code, not Cowork.**
 >
@@ -91,17 +96,46 @@ For each client component, from the spec's `states.machine`:
 - `TBD-user`/`FIGMA-GAPS` items — do not invent the missing transition. Stub it, cite the gap ID in
   a comment, and surface it.
 
-### Step 3 — Styling: bind the theme, do not inline
+### Step 3 — De-absolute the layout (the biggest job from a Figma source)
+
+Verified 2026-07-19: `get_design_context` emits **every layer absolutely positioned** with
+percentage insets — `absolute inset-[12.96%_0_12.96%_22.5%]`, fixed `h-[54px] w-[360px]` on the
+root. That is a faithful transcription of a Figma canvas and it is **not** usable React: it does not
+reflow, does not respond, and breaks the moment content length changes.
+
+**Converting absolute positioning to flow layout is the primary translation task here** — the
+analogue of "translate reactivity semantics" in the Leptos port. Work from the spec's `layout.md`
+intent and the screenshot, not the inset percentages:
+
+- A row of items → `flex` with a `gap`, not three absolutely-placed children.
+- Label beside an icon → `inline-flex items-center gap-2`.
+- Fixed root dimensions → intrinsic sizing plus constraints (`min-h`, `max-w`) unless the element is
+  genuinely fixed (an icon, an avatar).
+- Percentage insets → padding, gap, or grid tracks that express the *intent* the percentages encode.
+
+Keep absolute positioning only where the design truly means it: an overlay, a badge pinned to a
+corner, a decorative layer. Then it is `relative` parent + `absolute` child, not a whole subtree.
+
+### Step 4 — Styling: bind the theme, do not ship literals
 
 - Emit Tailwind utility classes bound to the project's theme. The spec ships `theme.css` (`@theme`,
   Tailwind v4) generated from `tokens.json` — **install it as the project's theme**, then reference
   its tokens by class (`bg-accent`, `text-primary`), never re-derived hex.
-- A spec token binding `{component.button.bg}` becomes a themed utility, not `bg-[#2563eb]`. An
-  arbitrary-value class in the output means a token was skipped — treat it as a defect.
+- **Expect the reference to be entirely arbitrary values** (`text-[36px]`, `text-black`,
+  `font-['Philosopher:Regular']`) — confirmed on a real file. That is normal for the *reference*;
+  the design-to-code skill hands you literals and expects conversion. It is a defect only in your
+  **final output**: a spec token binding `{component.button.bg}` must become a themed utility, not
+  `bg-[#2563eb]`.
+- **Fonts come back as `font-['Family:Weight']`** (e.g. `font-['PingFang_HK:Ultralight']`). Map to
+  `next/font` and reference through the theme's `--font-*` namespace — see
+  `references/react-to-nextjs.md`.
+- Where the design had **no token layer** (common — see `ds-figma-extract` Step 2 case B), the spec's
+  tokens are all `inferred: true`. They are still the binding surface: bind to them, and surface that
+  they need designer review rather than silently shipping invented names as fact.
 - See `references/react-to-nextjs.md` for Tailwind v4 specifics (CSS-first `@theme`, no
   `tailwind.config.js` by default) and the dark-mode mechanism.
 
-### Step 4 — Data boundary
+### Step 5 — Data boundary
 
 The spec's ownership lives in `behavior_contract`. In Next.js:
 
@@ -112,7 +146,7 @@ The spec's ownership lives in `behavior_contract`. In Next.js:
 - From Figma, there is **no** data ownership in the design — it is `TBD-user`, resolved from the
   target repo's existing patterns, not invented.
 
-### Step 5 — Preview surface
+### Step 6 — Preview surface
 
 Every component/state the verify manifest names must be reachable without code edits:
 
@@ -121,7 +155,7 @@ Every component/state the verify manifest names must be reachable without code e
   screenshot harness selects by them, same contract as the Leptos `/ds` route.
 - States needing data: seed via props on the preview route, not by editing the component.
 
-### Step 6 — Check discipline
+### Step 7 — Check discipline
 
 After each component, before marking done:
 
@@ -136,7 +170,7 @@ pnpm exec next build            # the real gate: RSC boundary + serialization er
 client bundle) frequently pass `tsc` and `next lint` and fail only at build. Run it as soon as the
 first component renders; keep it green.
 
-### Step 7 — Record
+### Step 8 — Record
 
 Per component or wave:
 

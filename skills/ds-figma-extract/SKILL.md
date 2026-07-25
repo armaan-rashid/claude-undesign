@@ -19,11 +19,22 @@ Output is the **same `spec/` directory** the code-export path produces. That is 
 `ds-nextjs-codegen`, `ds-leptos-codegen`, and any future target read one spec format regardless of
 whether it came from Figma or a React export.
 
-> **Runs in Claude Code, not Cowork.**
+> **Runs in BOTH Cowork and Claude Code** — verified in Cowork 2026-07-19.
 >
-> Needs the Figma MCP server (`mcp__b78f5274-…__*` / tools like `get_design_context`) connected in
-> Claude Code, and a target repo on disk to seed conventions from. Cowork cannot reach Claude
-> Code's MCP servers.
+> Unlike the rest of this pipeline, the Figma MCP is a **claude.ai account connector**
+> (`claude.ai Figma: https://mcp.figma.com/mcp`), so it follows the account across clients. That is
+> why it works here and `claude-design` does not — `claude-design` is registered with
+> `claude mcp add --scope user`, which writes Claude Code's local config only.
+>
+> **Loading the mandatory design-to-code skill differs by client:**
+> - **Claude Code** (Figma plugin installed): the `/figma-design-to-code` slash skill.
+> - **Cowork**: no slash command — load the MCP resource via `get_figma_skill` with
+>   `skill://figma/figma-design-to-code/SKILL.md`, and prefix the `skillNames` value with
+>   `resource:` (e.g. `resource:figma-design-to-code`).
+>
+> **What still needs Claude Code:** writing generated code into a repo outside a connected folder,
+> and every downstream stage that runs a toolchain (`next build`, `cargo check`, dev servers,
+> screenshots). Extraction is portable; codegen and verify are not.
 >
 > **If the Figma tools are absent, stop and say so** — do not hand-write a spec from a screenshot.
 > Confirm with `whoami` (the Figma MCP's auth check) before concluding they are missing.
@@ -111,15 +122,27 @@ point at a real frame or component (or a parent that contains layered structure)
 from a flattened image yields one confidently-empty component and zero tokens — worse than an honest
 "nothing here." Do not proceed to Steps 2–5 on a raster node.
 
-## Step 2 — Tokens (do this first; it is the strongest artifact)
+## Step 2 — Tokens: check whether a token layer exists at all
 
-`get_variable_defs` returns the design variables a node uses — Figma variables **are** design
-tokens, so this maps to `tokens.json` more directly than anything in the code-export path.
+**Call `get_libraries` first.** If `libraries_added_to_file` is `[]`, expect no variables — do not
+spend calls hunting node-by-node for a token layer that is not there.
 
-Read `references/figma-mcp-map.md` for the mapping and this critical constraint: **`get_variable_defs`
-is per-node** — it returns variables *used by that node*, not the file's whole collection. To build
-complete tokens you union across the key nodes (and consult `get_libraries`). A token tier that
-looks empty may just mean you queried the wrong node.
+Then `get_variable_defs` on your key nodes. Two very different worlds follow, and the run of
+2026-07-19 landed in the second:
+
+**A — variables exist.** Figma variables *are* design tokens; this maps to `tokens.json` more
+directly than anything in the code-export path. Note the constraint: **`get_variable_defs` is
+per-node**, returning variables *used by that node*, not the file's collection — union across key
+nodes or you undercount.
+
+**B — `{}` everywhere (verified common).** Many real files have no variables and no subscribed
+libraries. The "Figma variables are tokens" premise simply does not hold. Fall back to **harvesting
+raw values from the `get_design_context` output** — colors, sizes, fonts, radii — then cluster,
+tier, and name them per `ds-spec-extract`'s `tokens.md`, flagging **every** one `inferred: true`.
+Record in `FIGMA-GAPS.md` that the design carries no token layer and the tiering is a proposal
+awaiting designer review. Full procedure in `references/figma-mcp-map.md`.
+
+Do not present B as equivalent to A. It is a reviewable proposal, not extracted intent.
 
 Tier the result per `ds-spec-extract`'s bundled `tokens.md` (primitive → semantic → component).
 Figma variable **names often already encode tiers** (`color/text/primary`, `space/2`) — preserve

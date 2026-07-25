@@ -32,8 +32,40 @@ findings box below. Probe, then fix this file.
    `list_file_components_for_code_connect` and `get_context_for_code_connect` are almost certainly
    gated the same way (unconfirmed — same subsystem).
 
-3. **`get_variable_defs` empty ≠ "design has no tokens."** Confirmed the per-node warning with a real
-   `{}`. This node simply binds no variables. Query native component nodes, and union across them.
+3. **Many real files have NO variables at all.** `get_variable_defs` returned `{}` on **every** node
+   probed — the raster, and two native components. `get_libraries` showed
+   `libraries_added_to_file: []`. This file has no design system, and **that is the common case** for
+   anything not built by a mature design team. The skill's original premise ("Figma variables *are*
+   tokens, so this maps cleanly") only holds for design-system files. See the fallback path below.
+
+4. **Node types tell you what you are looking at** `[env]`: `<symbol>` = main component definition,
+   `<instance>` = an instance of one, `<frame>` / `<canvas>` = containers, `<rounded-rectangle>` /
+   `<vector>` / `<text>` = leaves. Find main components by scanning for `symbol`.
+
+5. **`get_design_context` on a native component emits absolute-positioned, arbitrary-value Tailwind.**
+   Real output, unedited:
+
+   ```tsx
+   export default function Component1({ className }: { className?: string }) {
+     return (
+       <div className={className || "h-[54px] relative w-[360px]"} data-node-id="16:27">
+         <div className="absolute inset-[0_82.5%_0_0]" data-node-id="16:12">…</div>
+         <p className="absolute font-['Philosopher:Regular'] inset-[12.96%_0_12.96%_22.5%] text-[36px] text-black">
+           Idea and Roadmap
+         </p>
+       </div>
+     );
+   }
+   ```
+
+   Note: a `className` override prop, **every** layer `absolute` with percentage insets, **every**
+   value arbitrary (`h-[54px]`, `text-[36px]`), fonts as `font-['Family:Weight']`, raw `text-black`,
+   and hardcoded copy. This is the reference *by design* — the design-to-code skill expects you to
+   convert it. Do not mistake it for finished code, and do not treat its arbitrary values as a defect
+   at this stage.
+
+6. **Default component names are common.** "Component 1", "Component 2" … are Figma's auto-names.
+   The spec needs semantic names; renaming is a judgment call → `TBD-user`, not a silent invention.
 
 ---
 
@@ -81,7 +113,29 @@ Consequences:
 - **`get_libraries` for reach.** If variables live in a shared library, confirm it is subscribed;
   library keys scope a `search_design_system` if you need to hunt specific tokens.
 
-### Tiering Figma variables
+### Fallback: the file has no variables (verified common)
+
+Confirmed 2026-07-19 — `get_variable_defs` `{}` on every node, `libraries_added_to_file: []`. When
+this happens the design has no token layer, so **harvest raw values from the `get_design_context`
+output instead** and tier them yourself:
+
+1. Collect every literal across all extracted components: colors (`text-black`, hex fills), sizes
+   (`h-[54px]`, `text-[36px]`), fonts (`font-['Philosopher:Regular']`), radii, spacing.
+2. Cluster near-duplicates and decide meaningful-vs-noise, exactly as
+   `ds-spec-extract/references/tokens.md` prescribes for a code export with raw values.
+3. Tier and name them — **every one flagged `inferred: true`** with evidence (the node id), because
+   every name is your invention, not the designer's.
+4. Say so plainly in `FIGMA-GAPS.md`: the design carries no token layer; the token tiering is
+   proposed and needs designer review.
+
+This is strictly weaker than a variables-backed extraction and must not be presented as equivalent.
+It is still worth doing — a tiered, reviewable proposal beats hex literals scattered through
+generated components.
+
+**Check `get_libraries` first** (`libraries_added_to_file`) — empty means expect no variables, and
+you can skip hunting node-by-node for a token layer that does not exist.
+
+### Tiering Figma variables (when they exist)
 
 Figma variable **names frequently already encode DTCG tiers** via `/` grouping:
 
